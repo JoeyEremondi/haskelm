@@ -24,10 +24,12 @@ import Data.Aeson.TH
 import qualified AST.Module as M
 import qualified AST.Declaration as D
 import qualified AST.Expression.General as E
+import qualified AST.Expression.Source as S
 import qualified AST.Literal as L
 import qualified AST.Annotation as Lo
 import qualified AST.Pattern as P
 import qualified AST.Type as T
+import qualified AST.Variable as V
 
 import Data.List (isPrefixOf)
 
@@ -83,7 +85,7 @@ emitWarning s = do
 
 
 -- |Stolen from Parse.Expression so we don't have to change any internal Elm code
-makeFunction :: [P.Pattern] -> E.Expr -> E.Expr
+makeFunction :: [P.RawPattern] -> S.Expr -> S.Expr
 makeFunction args body@(Lo.A s _) =
   foldr (\arg body' -> Lo.A s $ E.Lambda arg body') body args
 

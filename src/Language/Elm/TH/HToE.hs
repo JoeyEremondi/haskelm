@@ -23,10 +23,12 @@ import Data.Aeson.TH
 import qualified AST.Module as M
 import qualified AST.Declaration as D
 import qualified AST.Expression.General as E
+import qualified AST.Expression.Source as S
 import qualified AST.Literal as L
---import qualified AST.Location as Lo
+import qualified AST.Annotation as Lo
 import qualified AST.Pattern as P
 import qualified AST.Type as T
+import qualified AST.Variable as V
 
 import Data.List (isPrefixOf)
 
@@ -34,7 +36,7 @@ import Language.Haskell.TH.Desugar.Sweeten
 import Language.Haskell.TH.Desugar
 
 import Language.Elm.TH.Util
---import Parse.Expression (makeFunction)
+--import ParsS.Expression (makeFunction)
 
 import Control.Applicative
 
@@ -51,7 +53,7 @@ import Debug.Trace (trace)
 {-|
 Haskell to Elm Translations
 Most of these functions operate in the SQ monad, so that we can
-compare against Haskell expressions or types in quotes (see isIntType etc.)
+compare against Haskell expressions or types in quotes (see isIntType etS.)
 
 The return value is a list of Elm declarations
 -}
@@ -86,7 +88,7 @@ findRecords decs =
 -- |Translate a constructor into a list of Strings and type-lists,
 -- Which Elm uses for its internal representation of constructors
 --Also returns declarations associated with records
-translateCtor :: Con -> SQ ( (String,[T.Type]), [D.Declaration])
+translateCtor :: Con -> SQ ( (String,[T.RawType]), [D.SourceDecl])
 translateCtor (NormalC name strictTyList) =  do
   let sndList = map snd strictTyList
   tyList <- mapM translateType sndList
@@ -108,11 +110,11 @@ translateCtor (ForallC _ _ _) = unImplemented "forall constructors"
 
 -- | Take a list of declarations and a body
 -- and put it in a let only if the declarations list is non-empty
-maybeLet :: [E.Def] -> E.Expr -> E.Expr 
+maybeLet :: [S.Def] -> S.Expr -> S.Expr 
 maybeLet eWhere eBody = 
         if null eWhere
           then  eBody
-          else E.Let eWhere (Lo.none eBody)
+          else Lo.none (E.Let eWhere eBody)
 
 --------------------------------------------------------------------------
 -- | Helper to get the fields of the Clause type
@@ -132,7 +134,7 @@ single a = [a]
 
 -}
 
-translateDec:: Dec -> SQ [D.Declaration]
+translateDec:: Dec -> SQ [D.SourceDecl]
 
 --TODO translate where decs into elm let-decs
 --TODO what about when more than one clause?
@@ -144,7 +146,7 @@ translateDec (FunD name [Clause patList body whereDecs])  = do
     let eDecs = asDecs ++ eWhere
     fnBody <- translateBody body
     let eBody = maybeLet eDecs fnBody
-    return $ single $ D.Definition $ E.Definition (P.PVar eName) (makeFunction ePats (Lo.none eBody)) Nothing --TODO what is maybe arg?
+    return $ single $ D.Definition $ S.Definition (P.Var eName) (makeFunction ePats  eBody) 
     
 --multi-clause case i.e. pattern matching
 --Convert to a single-clause function with a case statement
@@ -172,13 +174,13 @@ translateDec (ValD pat body whereDecs)  = do
     eWhere <- (asDecs ++) <$> mapM translateDef whereDecs
     let eBody = maybeLet eWhere valBody
     
-    return $ single $ D.Definition $ E.Definition ePat (Lo.none eBody) Nothing --TODO what is maybe arg?
+    return $ single $ D.Definition $ S.Definition ePat eBody
 
 
 translateDec dec@(DataD [] name tyBindings ctors names) = do
     --jsonDecs <- deriveFromJSON defaultOptions name
     (eCtors, extraDecLists) <- unzip <$> mapM translateCtor ctors
-    return $ [ D.Datatype eName eTyVars eCtors []] ++ (concat extraDecLists) --TODO derivations?
+    return $ [ D.Datatype eName eTyVars eCtors ] ++ (concat extraDecLists) --TODO derivations?
     where
         eName = nameToElmString name
         eTyVars = map (nameToElmString . tyVarToName) tyBindings
@@ -197,7 +199,7 @@ translateDec (TySynD name tyBindings ty) = do
     let eName = nameToElmString name
     let eTyVars = map (nameToElmString . tyVarToName) tyBindings
     eTy <- translateType ty
-    return $ single $ D.TypeAlias eName eTyVars eTy []
+    return $ single $ D.TypeAlias eName eTyVars eTy 
 
 translateDec (ClassD cxt name tyBindings funDeps decs ) = doEmitWarning "Class definitions"
 translateDec (InstanceD cxt ty decs) = doEmitWarning "Instance declarations"
@@ -217,13 +219,14 @@ translateDec (DataInstD cxt name types ctors names) = doEmitWarning "Data instan
 
 translateDec (NewtypeInstD cxt name types ctor names) = doEmitWarning "Newtypes instances"
 
-translateDec (TySynInstD name types theTy) = doEmitWarning "Type synonym instances"
+--TODO check
+--translateDec (TySynInstD name types theTy) = doEmitWarning "Type synonym instances"
 
 --------------------------------------------------------------------------
 -- | Convert a declaration to an elm Definition
 -- Only works on certain types of declarations TODO document which
 
-translateDef :: Dec -> SQ E.Def
+translateDef :: Dec -> SQ S.Def
 
 --TODO functions
 translateDef (ValD pat body whereDecs) = do
@@ -231,7 +234,7 @@ translateDef (ValD pat body whereDecs) = do
     eWhere <- (asDecs ++ ) <$> mapM translateDef whereDecs
     decBody <- translateBody body
     let eBody = maybeLet eWhere decBody
-    return $ E.Definition ePat (Lo.none eBody) Nothing
+    return $ S.Definition ePat eBody
 
 --To do functions, we translate them into an Elm declaration
 --Then we convert
@@ -250,7 +253,7 @@ unFst x = (x, [])
 --------------------------------------------------------------------------
 -- |Translate a pattern match from Haskell to Elm
 
-translatePattern :: Pat -> SQ (P.Pattern, [E.Def])
+translatePattern :: Pat -> SQ (P.RawPattern, [S.Def])
 --Special case for As, to carry over the name
 translatePattern (AsP name initPat) = do
   (pat, patExp) <- patToExp initPat
@@ -265,9 +268,9 @@ translatePattern p = do
   return (ret, [])
   -}
 
-translatePattern (LitP lit) = (unFst . P.PLiteral) <$> translateLiteral lit
+translatePattern (LitP lit) = (unFst . P.Literal) <$> translateLiteral lit
 
-translatePattern (VarP name) = return $ unFst $ P.PVar $ nameToElmString name
+translatePattern (VarP name) = return $ unFst $ P.Var $ nameToElmString name
 
 --Special case: if only one pattern in tuple, don't treat as tuple
 --TODO why do we need this?
@@ -288,13 +291,13 @@ translatePattern (ConP name patList) = do
      then do
        let varNames = recMap Map.! str
        let decs = map makeDef $ zip patList varNames
-       return (P.PData str $ [P.PRecord varNames], decs ++ (concat allAsDecs))
+       return (P.Data (V.Raw str) $ [P.Record varNames], decs ++ (concat allAsDecs))
        
      else do
-      return (P.PData (nameToElmString name) patList, concat allAsDecs) 
+      return (P.Data (V.Raw $ nameToElmString name) patList, concat allAsDecs) 
   where 
-    makeDef :: (P.Pattern, String) -> E.Def
-    makeDef (pat, varString) = E.Definition pat (Lo.none $ E.Var varString) Nothing
+    makeDef :: (P.RawPattern, String) -> S.Def
+    makeDef (pat, varString) = S.Definition pat (Lo.none $ E.Var $ V.Raw varString)
     
 
 --Just pass through parentheses
@@ -303,7 +306,7 @@ translatePattern (ParensP p) = translatePattern p
 --TODO Infix, tilde, bang, as, record,  view
 
 
-translatePattern WildP = return $ unFst P.PAnything
+translatePattern WildP = return $ unFst P.Anything
 
 --Ignore the type signature if theres one in the pattern
 translatePattern (SigP pat _) = translatePattern pat
@@ -386,7 +389,7 @@ removeWildcards nameList p = return p --All other cases, nothing to remove, eith
 
 --------------------------------------------------------------------------
 -- |Translate a function body into Elm
-translateBody  :: Body -> SQ E.Expr
+translateBody  :: Body -> SQ S.Expr
 translateBody (NormalB e) = translateExpression e
 --Just convert to a multi-way If statement
 translateBody (GuardedB guardExpList) = translateExpression $ MultiIfE guardExpList
@@ -397,7 +400,8 @@ translateBody (GuardedB guardExpList) = translateExpression $ MultiIfE guardExpL
 expressionToString (VarE name) = nameToElmString name
 
 -- | Generic elm expression for "otherwise"
-elmOtherwise = E.Var "otherwise"
+elmOtherwise :: S.Expr
+elmOtherwise = Lo.none $ E.Var $ V.Raw "otherwise"
 
 -- | Translate a guard into an Elm expression
 translateGuard (NormalG exp) = translateExpression exp
@@ -422,21 +426,21 @@ Currently supported:
 Supported but not translated:
   Type signatures
 -}
-translateExpression :: Exp -> SQ E.Expr
+translateExpression :: Exp -> SQ S.Expr
 
 --TODO multi pattern exp?
 translateExpression (LamE [pat] expBody) = do
   (ePat, asDecs) <- translatePattern pat
   lambdaBody <- translateExpression expBody
   let eBody = maybeLet asDecs lambdaBody
-  return $ E.Lambda ePat (Lo.none eBody)
+  return $ Lo.none $ E.Lambda ePat ( eBody)
 
-translateExpression (VarE name) =  return $ E.Var $ nameToElmString name
+translateExpression (VarE name) =  return $ Lo.none $ E.Var $ V.Raw $ nameToElmString name
 
 --Just treat constructor as variable --TODO is this okay?
-translateExpression (ConE name) = return $ E.Var $ nameToElmString name
+translateExpression (ConE name) = return $ Lo.none $ E.Var $ V.Raw $ nameToElmString name
 
-translateExpression (LitE lit) = E.Literal <$> translateLiteral lit
+translateExpression (LitE lit) = (Lo.none . E.Literal) <$> translateLiteral lit
 
 --Lo.none converts expressions to located expressions with no location
 
@@ -451,61 +455,61 @@ translateExpression (AppE fun@(ConE ctor) arg) = do
      else do
         eFun <- translateExpression fun
         eArg <- translateExpression arg
-        return $ E.App (Lo.none eFun) (Lo.none eArg)
+        return $ Lo.none $ E.App (eFun) ( eArg)
 
 translateExpression (AppE fun arg) = do
     eFun <- translateExpression fun
     eArg <- translateExpression arg
-    return $ E.App (Lo.none eFun) (Lo.none eArg)
+    return $ Lo.none $ E.App ( eFun) (eArg)
 
 --TODO infix stuff, ranges, record con, record update
 
 translateExpression (ParensE e) = translateExpression e
 
-translateExpression (TupE es) = (E.tuple . map Lo.none) <$> mapM translateExpression es
+translateExpression (TupE es) = (Lo.none . E.tuple ) <$> mapM translateExpression es
 
 translateExpression (CondE cond th el) = do
-    eCond <- Lo.none <$> translateExpression cond
-    eTh <- Lo.none <$> translateExpression th
-    eEl <- Lo.none <$> translateExpression el
-    let loOtherwise = Lo.none elmOtherwise
-    return $ E.MultiIf [(eCond, eTh), (loOtherwise, eEl)]
+    eCond <-  translateExpression cond
+    eTh <-  translateExpression th
+    eEl <-  translateExpression el
+    let loOtherwise =  elmOtherwise
+    return $ Lo.none $ E.MultiIf [(eCond, eTh), (elmOtherwise, eEl)]
 
 translateExpression (MultiIfE guardExpList) = do
     expPairs <- mapM transPair guardExpList 
-    return $ E.MultiIf expPairs
+    return $ Lo.none $ E.MultiIf expPairs
     where
         transPair (guard, exp) = do
             eGuard <- translateGuard guard
             eExp <- translateExpression exp
-            return (Lo.none eGuard, Lo.none eExp)
+            return ( eGuard,  eExp)
 
 translateExpression (LetE decList exp) = do
     eDecs <- mapM translateDef decList
     eExp <- translateExpression exp
-    return $ E.Let eDecs (Lo.none eExp)
+    return $ Lo.none $ E.Let eDecs ( eExp)
 
 --TODO deal with Where
 translateExpression (CaseE exp matchList) = do
     eExp <- translateExpression exp
     eMatch <- mapM getMatch matchList
-    return $ E.Case (Lo.none eExp) eMatch
+    return $ Lo.none $ E.Case ( eExp) eMatch
     where
       getMatch (Match pat body whereDecs) = do
         (ePat, asDecs) <- translatePattern pat
         eWhere <- (asDecs ++ ) <$> mapM translateDef whereDecs
         matchBody <- translateBody body 
         let eBody = maybeLet eWhere matchBody
-        return (ePat, Lo.none eBody)
+        return (ePat,  eBody)
 
-translateExpression (ListE exps) = (E.ExplicitList . map Lo.none) <$> mapM translateExpression exps
+translateExpression (ListE exps) = ( Lo.none . E.ExplicitList ) <$> mapM translateExpression exps
 
 --Unboxed infix expression
 translateExpression (UInfixE e1 op e2) = do
     eE1 <- translateExpression e1
     eE2 <- translateExpression e2
-    let eOp =  expressionToString op
-    return $ E.Binop eOp (Lo.none eE1) (Lo.none eE2)
+    let eOp =  V.Raw $ expressionToString op
+    return $ Lo.none $ E.Binop eOp eE1 eE2
 
 --Infix where we have all the parts, i.e. not a section
 --Just translate as unboxed
@@ -515,21 +519,21 @@ translateExpression (InfixE (Just e1) op (Just e2)) =
 translateExpression e@(RecConE name nameExpList ) = do
   let (names, expList) = unzip nameExpList
   eExps <- mapM translateExpression expList
-  let stringList = map nameToString names
-  let lexps = map Lo.none eExps
-  return $ E.App (Lo.none $ E.Var $ nameToString name) (Lo.none $ E.Record $ zip stringList lexps)
+  let stringList = map ( nameToString ) names
+  let lexps =  eExps
+  return $ Lo.none $ E.App ( Lo.none $ E.Var $ V.Raw $ nameToString name) ( Lo.none $ E.Record $ zip stringList lexps)
 
 translateExpression e@(RecUpdE recExp nameExpList ) = do
   let (names, expList) = unzip nameExpList
   eExps <- mapM translateExpression expList
-  let lexps = map Lo.none eExps
-  let varStrings = map nameToString names
+  let lexps =  eExps
+  let varStrings = map ( nameToString) names
   eRec <- translateExpression recExp
   recMap <- records <$> S.get
   recName <- nameToString <$> liftNewName "rec"
   let ctor = recordWithFields recMap (map nameToString names)
-  let internalRecDef = E.Definition (P.PVar recName) (Lo.none $ E.App (Lo.none $ E.Var $ unboxRecordName ctor) (Lo.none eRec)) Nothing
-  return $ E.Let [internalRecDef] $ Lo.none $ E.App (Lo.none $ E.Var ctor) (Lo.none $ E.Modify (Lo.none $ E.Var recName) ( zip varStrings lexps) )
+  let internalRecDef = S.Definition (P.Var recName) (Lo.none $ E.App (Lo.none $ E.Var $ V.Raw $ unboxRecordName ctor) (eRec))
+  return $ Lo.none $  E.Let [internalRecDef] $ Lo.none $ E.App (Lo.none $ E.Var $ V.Raw ctor) (Lo.none $ E.Modify (Lo.none $ E.Var $ V.Raw recName) ( zip varStrings lexps) )
   
 translateExpression (InfixE _ _ _) = unImplemented "Operator sections i.e. (+3)"    
     
@@ -577,11 +581,11 @@ translateLiteral = return . noQTrans where
 
 
 -- | Translate a Haskell range. Infinite lists not supported, since Elm is strict
-translateRange :: Range -> SQ E.Expr
+translateRange :: Range -> SQ S.Expr
 translateRange (FromToR start end) = do
-  e1 <- Lo.none <$> translateExpression start
-  e2 <- Lo.none <$> translateExpression end
-  return $ E.Range e1 e2
+  e1 <-  translateExpression start
+  e2 <-  translateExpression end
+  return $ Lo.none $ E.Range e1 e2
   
 translateRange _ = unImplemented "Infinite ranges, or ranges with steps not equal to 1"
 
@@ -593,7 +597,7 @@ Translate a Haskell type into an Elm type
 Currently translates primitive types, lists, tuples and constructors (ADTs)
 Doesn't support type classes or fancier types
 -}
-translateType :: Type -> SQ T.Type
+translateType :: Type -> SQ T.RawType
 
 translateType (ForallT _ _ _ ) = unImplemented "forall types"
 translateType (PromotedT _ ) = unImplemented "promoted types"
@@ -618,12 +622,12 @@ translateType t = do
   isBool <- S.lift $ isBoolType t
   generalTranslate isInt isString isFloat isBool --TODO get these in scope
   where
-    generalTranslate :: Bool -> Bool -> Bool -> Bool -> SQ T.Type
+    generalTranslate :: Bool -> Bool -> Bool -> Bool -> SQ T.RawType
     generalTranslate isInt isString isFloat isBool
-      | isInt = return $ T.Data "Int" []
-      | isString = return $ T.Data "String" []
-      | isFloat = return $ T.Data "Float" []
-      | isBool = return $ T.Data "Bool" []
+      | isInt = return $ T.Type (V.Raw "Int")
+      | isString = return $ T.Type (V.Raw "String")
+      | isFloat = return $ T.Type (V.Raw "Float")
+      | isBool = return $ T.Type (V.Raw "Bool")
       | isTupleType t = do
           tyList <- mapM translateType (tupleTypeToList t)
           return $ T.tupleOf tyList
@@ -631,7 +635,7 @@ translateType t = do
           --type variables
           (VarT name) -> return $ T.Var (nameToElmString name)
           --sum types/ADTs
-          (ConT name) -> return $ T.Data (nameToElmString name) [] --TODO what is this list param?
+          (ConT name) -> return $ T.Type (nameToElmString name) [] --TODO what is this list param?
           --functions
           (AppT (AppT ArrowT a) b) -> do
             ea <- translateType a
@@ -648,13 +652,13 @@ translateType t = do
           --then add this type to the list of applied types
           (AppT subt tvar) -> do
             etvar <- translateType tvar
-            T.Data ctor varList <- translateType subt
-            return $ T.Data ctor (varList ++ [etvar])                                           
+            T.Type ctor varList <- translateType subt
+            return $ T.Type ctor (varList ++ [etvar])                                           
 
 
             
 -- | Special record type translation
-translateRecord :: [(Name, Type)] -> SQ T.Type
+translateRecord :: [(Name, Type)] -> SQ T.RawType
 translateRecord nameTyList = do
   let (nameList, tyList) = unzip nameTyList
   let eNames = map nameToElmString nameList
@@ -662,37 +666,37 @@ translateRecord nameTyList = do
   return $ T.recordOf $ zip eNames eTypes
   
 --Generate the function declarations associated with a record type
-accessorDec :: Name -> Name -> D.Declaration
+accessorDec :: Name -> Name -> D.SourceDecl
 --Names are always local
 accessorDec ctor name = 
   let
     nameString = nameToString name
     var = "rec"
     varExp = E.Var var
-    varPat = P.PData (nameToString ctor) [P.PVar var]
+    varPat = P.Data (nameToString ctor) [P.Var var]
     funBody = E.Access (Lo.none $ varExp) nameString
     fun = E.Lambda varPat (Lo.none funBody)
-  in D.Definition $ E.Definition (P.PVar nameString) (Lo.none fun) Nothing
+  in D.Definition $ S.Definition (P.Var nameString) (Lo.none fun) Nothing
 
-recordMakerDec :: String -> [String] -> D.Declaration
+recordMakerDec :: String -> [String] -> D.SourceDecl
 recordMakerDec ctor vars =
   let
       argNames = map (("arg" ++) . show) [1 .. (length vars)]
-      patList = map P.PVar argNames
+      patList = map P.Var argNames
       expList = map (Lo.none . E.Var) argNames
       recordCons = Lo.none $ E.Record $ zip vars expList
       funBody = E.App (Lo.none $ E.Var ctor) recordCons
       fun = makeCurry patList funBody 
-  in D.Definition $ E.Definition (P.PVar $ recordMakerName ctor) (Lo.none fun) Nothing
+  in D.Definition $ S.Definition (P.Var $ recordMakerName ctor) (Lo.none fun) Nothing
   where makeCurry argPats body = foldr (\pat body-> E.Lambda pat (Lo.none body) ) body argPats
 
-recordUnboxDec :: String ->  D.Declaration
+recordUnboxDec :: String ->  D.SourceDecl
 recordUnboxDec ctor  =
   let
-      pat = P.PData ctor [P.PVar "x"]
+      pat = P.Data ctor [P.Var "x"]
       body = E.Var "x"
       fun = E.Lambda pat (Lo.none body)
-  in D.Definition $ E.Definition (P.PVar $ unboxRecordName ctor) (Lo.none fun) Nothing
+  in D.Definition $ S.Definition (P.Var $ unboxRecordName ctor) (Lo.none fun) Nothing
   
 recordMakerName name =  "makeRecord__" ++ name
 unboxRecordName name =  "unboxRecord__" ++ name 

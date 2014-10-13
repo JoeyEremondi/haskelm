@@ -7,8 +7,12 @@ import AST.Declaration
 import AST.Literal
 import AST.Pattern
 import AST.Annotation
+import AST.Variable
 
 --TODO add NthVar to unpack ADTs
+baseDecs = []
+
+{-
 baseDecs = [AST.Declaration.Definition
           
           (AST.Expression.Canonical.Definition
@@ -19,7 +23,7 @@ baseDecs = [AST.Declaration.Definition
                    (AST.Annotation.Position (1) (1)) (""))
                 (AST.Expression.General.Lambda
                    (AST.Pattern.Data
-                      "Json.Object" [AST.Pattern.Var "d"])
+                      (Canonical Local "Json.Object") [AST.Pattern.Var "d"])
                    (AST.Annotation.A
                       (AST.Annotation.Span
                          (AST.Annotation.Position (1) (1))
@@ -36,7 +40,7 @@ baseDecs = [AST.Declaration.Definition
                                            (AST.Annotation.Position (1) (1))
                                            (AST.Annotation.Position (1) (1))
                                            (""))
-                                        (AST.Expression.General.Var "Dict.lookup"))
+                                        (AST.Expression.General.Var (Canonical (Module "Dict") "lookup") ))
                                      (AST.Annotation.A
                                         (AST.Annotation.Span
                                            (AST.Annotation.Position (1) (1))
@@ -49,11 +53,11 @@ baseDecs = [AST.Declaration.Definition
                                      (AST.Annotation.Position (1) (1))
                                      (AST.Annotation.Position (1) (1))
                                      (""))
-                                  (AST.Expression.General.Var "d"))))
+                                  (AST.Expression.General.Var (Canonical Local "d") ))))
                          [(AST.Pattern.Data
-                             "Just"
+                             (Canonical Local "Just")
                              [AST.Pattern.Data
-                                "Json.String"
+                                (Canonical (Module "Json") "String")
                                 [AST.Pattern.Var "c"]],AST.Annotation.A
                                                                    (AST.Annotation.Span
                                                                       (AST.Annotation.Position
@@ -62,7 +66,7 @@ baseDecs = [AST.Declaration.Definition
                                                                          (1) (1))
                                                                       (""))
                                                                    (AST.Expression.General.Var
-                                                                      "c"))]))))
+                                                                      (Canonical Local "c" ) ))]))))
              Nothing),
         AST.Declaration.Definition
           (AST.Expression.Canonical.Definition
@@ -73,7 +77,7 @@ baseDecs = [AST.Declaration.Definition
                    (AST.Annotation.Position (1) (1)) (""))
                 (AST.Expression.General.Lambda
                    (AST.Pattern.Data
-                      "Json.Object" [AST.Pattern.Var "d"])
+                      (Canonical Local "Json.Object") [AST.Pattern.Var "d"])
                    (AST.Annotation.A
                       (AST.Annotation.Span
                          (AST.Annotation.Position (1) (1))
@@ -96,7 +100,7 @@ baseDecs = [AST.Declaration.Definition
                                                  (AST.Annotation.Position (1) (1))
                                                  (AST.Annotation.Position (1) (1))
                                                  (""))
-                                              (AST.Expression.General.Var "Dict.lookup"))
+                                              (AST.Expression.General.Var (Canonical Local "Dict.lookup") ))
                                            (AST.Annotation.A
                                               (AST.Annotation.None "")
                                               (AST.Expression.General.App
@@ -107,7 +111,7 @@ baseDecs = [AST.Declaration.Definition
                                                        (AST.Annotation.Position
                                                           (1) (1))
                                                        (""))
-                                                    (AST.Expression.General.Var "show"))
+                                                    (AST.Expression.General.Var (Canonical Local "show") ))
                                                  (AST.Annotation.A
                                                     (AST.Annotation.Span
                                                        (AST.Annotation.Position
@@ -115,15 +119,15 @@ baseDecs = [AST.Declaration.Definition
                                                        (AST.Annotation.Position
                                                           (1) (1))
                                                        (""))
-                                                    (AST.Expression.General.Var "n"))))))
+                                                    (AST.Expression.General.Var (Canonical Local "n") ))))))
                                      (AST.Annotation.A
                                         (AST.Annotation.Span
                                            (AST.Annotation.Position (1) (1))
                                            (AST.Annotation.Position (1) (1))
                                            (""))
-                                        (AST.Expression.General.Var "d"))))
+                                        (AST.Expression.General.Var (Canonical Local "d") ))))
                                [(AST.Pattern.Data
-                                   "Just" [AST.Pattern.Var "val"],AST.Annotation.A
+                                   (Canonical Local "Just") [AST.Pattern.Var "val"],AST.Annotation.A
                                                                               (AST.Annotation.Span
                                                                                  (AST.Annotation.Position
                                                                                     (1)
@@ -133,7 +137,7 @@ baseDecs = [AST.Declaration.Definition
                                                                                     (1))
                                                                                  (""))
                                                                               (AST.Expression.General.Var
-                                                                                 "val"))]))))))
+                                                                                 (Canonical Local "val") ))]))))))
              Nothing),
         AST.Declaration.Definition
           (AST.Expression.Canonical.Definition
@@ -146,7 +150,7 @@ baseDecs = [AST.Declaration.Definition
                       (AST.Annotation.None "")
                       (AST.Expression.General.Lambda
                          (AST.Pattern.Data
-                            "Json.Array" [AST.Pattern.Var "l"])
+                            (Canonical Local "Json.Array") [AST.Pattern.Var "l"])
                          (AST.Annotation.A
                             (AST.Annotation.None "")
                             (AST.Expression.General.App
@@ -158,13 +162,13 @@ baseDecs = [AST.Declaration.Definition
                                            (AST.Annotation.Position (1) (1))
                                            (AST.Annotation.Position (1) (1))
                                            (""))
-                                        (AST.Expression.General.Var "map"))
+                                        (AST.Expression.General.Var (Canonical Local "map") ))
                                      (AST.Annotation.A
                                         (AST.Annotation.Span
                                            (AST.Annotation.Position (1) (1))
                                            (AST.Annotation.Position (1) (1))
                                            (""))
-                                        (AST.Expression.General.Var "f"))))
+                                        (AST.Expression.General.Var (Canonical Local "f")  ))))
                                (AST.Annotation.A
                                   (AST.Annotation.Span
                                      (AST.Annotation.Position (1) (1))
@@ -224,3 +228,4 @@ baseDecs = [AST.Declaration.Definition
                                                                     (AST.Expression.General.Var
                                                                        "s"))]))))
              Nothing)]
+-}
