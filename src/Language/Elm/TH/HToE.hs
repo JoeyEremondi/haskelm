@@ -635,7 +635,7 @@ translateType t = do
           --type variables
           (VarT name) -> return $ T.Var (nameToElmString name)
           --sum types/ADTs
-          (ConT name) -> return $ T.Type (nameToElmString name) [] --TODO what is this list param?
+          (ConT name) -> return $ T.Type (V.Raw $ nameToElmString name) --TODO what is this list param?
           --functions
           (AppT (AppT ArrowT a) b) -> do
             ea <- translateType a
@@ -652,8 +652,8 @@ translateType t = do
           --then add this type to the list of applied types
           (AppT subt tvar) -> do
             etvar <- translateType tvar
-            T.Type ctor varList <- translateType subt
-            return $ T.Type ctor (varList ++ [etvar])                                           
+            esubt <- translateType subt
+            return $ T.App esubt [etvar]                                            
 
 
             
@@ -672,31 +672,32 @@ accessorDec ctor name =
   let
     nameString = nameToString name
     var = "rec"
-    varExp = E.Var var
-    varPat = P.Data (nameToString ctor) [P.Var var]
-    funBody = E.Access (Lo.none $ varExp) nameString
-    fun = E.Lambda varPat (Lo.none funBody)
-  in D.Definition $ S.Definition (P.Var nameString) (Lo.none fun) Nothing
+    rawVar = V.Raw var
+    varExp =  (E.Var rawVar)  
+    varPat = (P.Data (V.Raw $  nameToString ctor) [P.Var var])::  P.RawPattern
+    funBody =  Lo.none (E.Access ( Lo.none varExp) nameString ) 
+    fun = Lo.none (E.Lambda varPat funBody) 
+  in D.Definition $ S.Definition (P.Var  nameString) ( fun) 
 
 recordMakerDec :: String -> [String] -> D.SourceDecl
 recordMakerDec ctor vars =
   let
       argNames = map (("arg" ++) . show) [1 .. (length vars)]
       patList = map P.Var argNames
-      expList = map (Lo.none . E.Var) argNames
-      recordCons = Lo.none $ E.Record $ zip vars expList
-      funBody = E.App (Lo.none $ E.Var ctor) recordCons
-      fun = makeCurry patList funBody 
-  in D.Definition $ S.Definition (P.Var $ recordMakerName ctor) (Lo.none fun) Nothing
+      expList = (map ( Lo.none . E.Var . V.Raw ) argNames) :: [S.Expr]
+      recordCons = (Lo.none $ E.Record $ zip vars expList) :: S.Expr
+      funBody = ( E.App (Lo.none $ E.Var $ V.Raw ctor) recordCons) 
+      fun = Lo.none $ makeCurry patList funBody 
+  in  D.Definition $ S.Definition (P.Var $ recordMakerName ctor) ( fun)
   where makeCurry argPats body = foldr (\pat body-> E.Lambda pat (Lo.none body) ) body argPats
 
 recordUnboxDec :: String ->  D.SourceDecl
 recordUnboxDec ctor  =
   let
-      pat = P.Data ctor [P.Var "x"]
-      body = E.Var "x"
+      pat = P.Data (V.Raw ctor) [P.Var "x"]
+      body = E.Var $ V.Raw "x"
       fun = E.Lambda pat (Lo.none body)
-  in D.Definition $ S.Definition (P.Var $ unboxRecordName ctor) (Lo.none fun) Nothing
+  in D.Definition $ S.Definition (P.Var $ unboxRecordName ctor) (Lo.none fun) 
   
 recordMakerName name =  "makeRecord__" ++ name
 unboxRecordName name =  "unboxRecord__" ++ name 
