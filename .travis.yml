@@ -1,0 +1,7 @@
+language: haskell
+before_install:
+  - cabal install --dependencies-only -j
+script:
+  - cabal build
+  - cat Test.elm
+
