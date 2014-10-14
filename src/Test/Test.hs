@@ -24,7 +24,7 @@ elmString = $(translateToElm
 runTest = do
   putStrLn "Generated elm strings:"
   mapM_ putStrLn [elmString]
-  writeFile "src/Test.elm" elmString
+  writeFile "Test.elm" elmString
   putStrLn elmString
   return ()
 
