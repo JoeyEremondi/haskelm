@@ -1,5 +1,6 @@
 language: haskell
 before_install:
+  - cabal configure --enable-tests
   - cabal install --dependencies-only -j
 script:
   - cabal build

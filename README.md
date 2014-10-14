@@ -1,5 +1,7 @@
 # Haskelm: Haskell to Elm Translation
 
+[![Build Status](https://travis-ci.org/JoeyEremondi/haskelm.svg)](https://travis-ci.org/JoeyEremondi/haskelm/builds/37910060#)
+
 **NEW** Updated for Elm 0.13
 
 A program for Haskell to Elm translation, as well as
