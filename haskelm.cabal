@@ -108,7 +108,7 @@ Test-Suite test-haskelm
                        pretty,
                        text,
                        unordered-containers,
-                       shakespeare,
+                       --shakespeare,
                        template-haskell,
                        haskell-src-meta,
                        vector,
