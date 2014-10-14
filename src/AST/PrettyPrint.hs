@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, UndecidableInstances #-}
 module AST.PrettyPrint where
 
 import Control.Monad.Trans.Error
@@ -14,11 +14,17 @@ instance Pretty Doc where
 instance Pretty String where
   pretty = P.text
 
+--instance (Show a) => Pretty a where
+--    pretty = text . show
+
 renderPretty :: (Pretty a) => a -> String
 renderPretty e = render (pretty e)
 
 commaCat docs = cat (punctuate comma docs)
 commaSep docs = sep (punctuate comma docs)
+
+newlineSep :: [Doc] -> Doc
+newlineSep docs = hsep docs
 
 parensIf :: Bool -> Doc -> Doc
 parensIf bool doc = if bool then parens doc else doc

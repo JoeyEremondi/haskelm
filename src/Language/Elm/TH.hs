@@ -58,6 +58,8 @@ import Language.Haskell.TH
 import qualified Data.Text as TS
 import AST.Declaration as D
 import AST.Module as M
+import AST.Variable as V
+
 import Language.Elm.TH.BaseDecs
 import Language.Haskell.TH.Lib
 import qualified Language.Elm.TH.HToE as HToE
@@ -101,7 +103,7 @@ defaultOptions = Options True [] [] "Main"
 
 -- | 'toElm' takes a 'String' module name and a list of Template Haskell declarations
 -- and generates a translated Elm AST module
-toElm :: TranslateOptions -> [Dec] -> Q (M.Module D.Declaration)
+toElm :: TranslateOptions -> [Dec] -> Q (M.SourceModule)
 toElm options decs = do
   let doJson = makeJson options
   fromJsonDecs <- if doJson then evalStateT  (Json.makeFromJson decs) Util.defaultState else return []
@@ -109,9 +111,9 @@ toElm options decs = do
   let jsonDecs = fromJsonDecs ++ toJsonDecs
   --sumDecs <- evalStateT  (Json.giantSumType decs) Util.defaultState
   elmDecs <- evalStateT  (concat <$> translateDecs (decs ++ jsonDecs)  ) Util.defaultState
-  let importList = map (\im->(im, Importing [])) $ qualifiedImports options
-  let openImportList = map (\im->(im, Hiding [])) $ openImports options
-  return $ M.Module [moduleName options] [] (importList ++ openImportList) elmDecs 
+  let importList = map (\im->(im, M.importing [])) $ qualifiedImports options
+  let openImportList = map (\im->(im, M.open )) $ openImports options
+  return $ M.Module [moduleName options] "" (V.openListing)  (importList ++ openImportList) elmDecs 
 
 --Single stateful computation to store record state information  
 translateDecs decs = do
@@ -145,12 +147,12 @@ decsFromModuleFile filePath = do
   decsFromModuleString decString
 
 
-
-elmModuleToString (Module [name] exports imports elmDecs ) =
+elmModuleToString :: M.SourceModule -> String
+elmModuleToString (M.Module [name] path exports imports elmDecs ) =
   let allDecs = baseDecs ++ elmDecs 
-      allImports = imports ++ [("Json", M.As "Json"), ("Dict", M.As "Dict"), ("JsonUtil", M.As "JsonUtil"), ("Error", M.As "Error")]
-      newModule = Module [name] exports allImports allDecs
-      modString = show $ Pretty.pretty newModule
+      allImports = [] --TODO --imports ++ [("Json", M.As "Json"), ("Dict", M.As "Dict"), ("JsonUtil", M.As "JsonUtil"), ("Error", M.As "Error")]
+      newModule = M.Module [name] path exports allImports allDecs
+      modString =  Pretty.renderPretty newModule
   in modString              
                
 

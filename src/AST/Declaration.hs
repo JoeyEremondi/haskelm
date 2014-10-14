@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 module AST.Declaration where
 
 import Data.Binary
@@ -104,3 +105,9 @@ instance (Pretty expr, Pretty var, Var.ToString var) => Pretty (Port expr var) w
 
 prettyPort :: (Pretty a) => String -> String -> a -> Doc
 prettyPort name op e = P.text "port" <+> P.text name <+> P.text op <+> pretty e
+
+declPretty :: SourceDecl -> Doc
+declPretty = pretty
+
+instance Pretty [SourceDecl] where
+    pretty l = newlineSep $ map declPretty l 
