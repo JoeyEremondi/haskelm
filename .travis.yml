@@ -1,8 +1,8 @@
 language: haskell
 before_install:
-  - cabal configure --enable-tests
   - cabal install --dependencies-only -j
+  - cabal configure --enable-tests
 script:
-  - cabal build
+  - cabal build -j
   - cat Test.elm
 
