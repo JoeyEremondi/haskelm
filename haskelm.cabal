@@ -22,15 +22,18 @@ source-repository head
 Library
   exposed-modules:     Language.Elm.TH
   hs-Source-Dirs:      src
-  other-modules:       SourceSyntax.Declaration,
-                       SourceSyntax.Expression,
-                       SourceSyntax.Helpers,
-                       SourceSyntax.Literal,
-                       SourceSyntax.Location,
-                       SourceSyntax.Module,
-                       SourceSyntax.Pattern,
-                       SourceSyntax.PrettyPrint,
-                       SourceSyntax.Type,
+  other-modules:       AST.Declaration,
+                       AST.Expression.General,
+                       AST.Expression.Canonical,
+                       AST.Expression.Source,
+                       AST.Expression.Valid,
+                       AST.Helpers,
+                       AST.Literal,
+                       AST.Annotation,
+                       AST.Module,
+                       AST.Pattern,
+                       AST.PrettyPrint,
+                       AST.Type,
                        Language.Elm.TH.HToE
                        Language.Elm.TH.Json
                        Language.Elm.TH.Util
@@ -51,6 +54,7 @@ Library
                        th-desugar,
                        temporary,
                        split,
+                       transformers,
                        --Elm,
                        --elm-build-lib,
                        binary,
@@ -60,15 +64,18 @@ Library
 Executable haskelm
   Main-is:             Haskelm.hs
   hs-Source-Dirs:      src
-  other-modules:       SourceSyntax.Declaration,
-                       SourceSyntax.Expression,
-                       SourceSyntax.Helpers,
-                       SourceSyntax.Literal,
-                       SourceSyntax.Location,
-                       SourceSyntax.Module,
-                       SourceSyntax.Pattern,
-                       SourceSyntax.PrettyPrint,
-                       SourceSyntax.Type,
+  other-modules:       AST.Declaration,
+                       AST.Expression.General,
+                       AST.Expression.Canonical,
+                       AST.Expression.Source,
+                       AST.Expression.Valid,
+                       AST.Helpers,
+                       AST.Literal,
+                       AST.Annotation,
+                       AST.Module,
+                       AST.Pattern,
+                       AST.PrettyPrint,
+                       AST.Type,
                        Language.Elm.TH.HToE
                        Language.Elm.TH.Json
                        Language.Elm.TH.Util
@@ -90,6 +97,7 @@ Executable haskelm
                        th-desugar,
                        temporary,
                        split,
+                       transformers,
                        --Elm,
                        --elm-build-lib,
                        binary,
@@ -97,8 +105,8 @@ Executable haskelm
 
 Test-Suite test-haskelm
   Type:            exitcode-stdio-1.0
-  Hs-Source-Dirs:  tests, src
-  Main-is:         Main.hs
+  Hs-Source-Dirs:  src, src/Test
+  Main-is:         Test.hs
   Build-depends:       aeson,
                        base >=4.2 && <5,
                        containers >= 0.3,
@@ -108,12 +116,13 @@ Test-Suite test-haskelm
                        pretty,
                        text,
                        unordered-containers,
-                       shakespeare,
+                       --shakespeare,
                        template-haskell,
                        haskell-src-meta,
                        vector,
                        th-desugar,
                        temporary,
+                       transformers,
                        split,
                        --Elm,
                        --elm-build-lib,

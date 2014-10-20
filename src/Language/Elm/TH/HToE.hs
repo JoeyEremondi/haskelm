@@ -398,6 +398,9 @@ translateBody (GuardedB guardExpList) = translateExpression $ MultiIfE guardExpL
 
 -- | Expression helper function to convert a Var to a String
 expressionToString (VarE name) = nameToElmString name
+expressionToString (ConE name) = nameToElmString name
+
+expressionToString x = error $ "Can't convert " ++ (show x) ++ " to string"
 
 -- | Generic elm expression for "otherwise"
 elmOtherwise :: S.Expr
@@ -718,9 +721,14 @@ getElmName "$"  = "<|"
 getElmName ":"  = "::"
 
 --Not a change, but lets us search for . in module names
-getElmName "." = "."
+getElmName "." = "<<"
+
+getElmName "^^" = "^"
+getElmName "**" = "^"
 
 getElmName "error" = "Error.raise"
+
+getElmName "id" = "identity"
 
 --Specific cases
 getElmName s

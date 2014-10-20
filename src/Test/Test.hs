@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell, QuasiQuotes, MultiWayIf #-}
-module Test.Test where
+module Main where
 
 {-|
 Haskelm test suite
@@ -21,11 +21,9 @@ elmString = $(translateToElm
     ("src/Test/module1.hs" ) )
 
 -- | We can now access the elm strings we declared
-runTest = do
-  putStrLn "Generated elm strings:"
+main = do
+  putStrLn "Generated elm strings: "
   mapM_ putStrLn [elmString]
-  writeFile "Test.elm" elmString
-  putStrLn elmString
+  writeFile "src/TestOutput.elm" elmString
+  --putStrLn elmString
   return ()
-
-main = runTest

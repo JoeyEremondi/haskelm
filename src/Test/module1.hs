@@ -72,9 +72,11 @@ intExp = 3.2^^(-1)
 floatExp = 3.14**(3.14)
 
 concatTest = [3] ++ [4]
-listDiffTest = [3,4] \\ [3]
+
+--listDiffTest = [3,4] \\ [3]
 consTest = (3 : 4 : 5 : [])
-indexTest = [1,2,3,4] !! 2
+--indexTest = [1,2,3,4] !! 2
+
 
 compTest = id . add13
 reverseCompTest = add13 >> id
