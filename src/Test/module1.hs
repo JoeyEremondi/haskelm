@@ -1,5 +1,7 @@
 module Foo where
 
+import Data.List((\\),(!!))
+
 --Basic data declaration
 data A = B Int | C String String | D 
 
@@ -53,3 +55,29 @@ funInLet =
   let 
     plus1 x = x + 1
   in plus1 3
+
+--Test the different operators
+plusTest = 3 + 4
+minusTest = 3-4
+multTest = 3*4
+divTest = 3.1/4.32
+
+andTest = (3 < 2) && (4 > 3)
+orTest = (3 <= 2) || (4 >= 3)
+notTest = not (3 == 4)
+neqTest = 4 /= 4
+
+expCardinal = 4^2
+intExp = 3.2^^(-1)
+floatExp = 3.14**(3.14)
+
+concatTest = [3] ++ [4]
+--listDiffTest = [3,4] \\ [3]
+consTest = (3 : 4 : 5 : [])
+--indexTest = [1,2,3,4] !! 2
+
+compTest = id . add13
+reverseCompTest = add13 >> id
+appTest = head $ concat [[1,2,3], [4,5,6]]
+--reverseAppTest = ( concat [[1,2,3], [4,5,6]]) <| first
+

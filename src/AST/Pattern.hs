@@ -56,7 +56,7 @@ instance Var.ToString var => Pretty (Pattern var) where
      Alias x p -> prettyParens p <+> PP.text "as" <+> variable x
      Anything -> PP.text "_"
      Data name [hd,tl] | Var.toString name == "::" ->
-         parensIf isCons (pretty hd) <+> PP.text "::" <+> pretty tl
+         PP.parens $ parensIf isCons (pretty hd) <+> PP.text "::" <+> pretty tl
        where
          isCons = case hd of
                     Data ctor _ -> Var.toString ctor == "::"
@@ -64,7 +64,7 @@ instance Var.ToString var => Pretty (Pattern var) where
 
      Data name ps
          | Help.isTuple name' -> PP.parens . commaCat $ map pretty ps
-         | otherwise          -> hsep (PP.text name' : map prettyParens ps)
+         | otherwise          -> PP.parens $ hsep (PP.text name' : map prettyParens ps)
          where
            name' = Var.toString name
 

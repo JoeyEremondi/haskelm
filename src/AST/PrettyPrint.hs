@@ -24,7 +24,7 @@ commaCat docs = cat (punctuate comma docs)
 commaSep docs = sep (punctuate comma docs)
 
 newlineSep :: [Doc] -> Doc
-newlineSep docs = hsep docs
+newlineSep docs = vcat docs
 
 parensIf :: Bool -> Doc -> Doc
 parensIf bool doc = if bool then parens doc else doc
