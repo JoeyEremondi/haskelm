@@ -1,3 +1,4 @@
+ {-# LANGUAGE TemplateHaskell #-}
 module Language.Elm.TH.BaseDecs where
 
 --import AST.Annotation
@@ -8,9 +9,21 @@ import AST.Literal
 import AST.Pattern
 import AST.Annotation
 import AST.Variable
+import qualified AST.Module as Module
+import qualified Data.Map as Map
+import qualified Parse.Parse as Parse
+import Data.ByteString.UTF8 as UTF8
+import qualified Text.PrettyPrint as Pretty
 
+import Data.FileEmbed
+
+baseDecsElm = $(embedFile "BaseDecs.elm")
+
+infixes = Map.fromList . map (\(assoc,lvl,op) -> (op,(lvl,assoc))) . concatMap Module.iFixities $ []
 --TODO add NthVar to unpack ADTs
-baseDecs = []
+baseDecs = case (Parse.program infixes $ UTF8.toString baseDecsElm) of
+    Left doc -> error $ concatMap Pretty.render doc
+    Right modul -> Module.body modul
 
 {-
 baseDecs = [AST.Declaration.Definition
