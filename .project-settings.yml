@@ -9,7 +9,7 @@ environment: ghc-7.8-stable-14.09
 auto-hidden: []
 cabal-file: project.cabal
 version: 1
-extra-packages: ''
+extra-packages: ! 'Hackage: QuasiText 0.1.2.5'
 ghc-args:
 - -ddump-splices
 excluded-modules:

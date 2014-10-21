@@ -1,6 +1,7 @@
 import Json 
 import Dict
 
+
 getCtor = \(Json.Object d) -> case Dict.get "tag" d of
                            Just (Json.String c) -> c
 varNamed = \(Json.Object d) n -> case Dict.get (show n) d of

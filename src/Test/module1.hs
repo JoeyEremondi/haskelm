@@ -79,7 +79,7 @@ consTest = (3 : 4 : 5 : [])
 
 
 compTest = id . add13
-reverseCompTest = add13 >> id
+-- reverseCompTest = add13 >> id
 appTest = head $ concat [[1,2,3], [4,5,6]]
 --reverseAppTest = ( concat [[1,2,3], [4,5,6]]) <| first
 

@@ -60,7 +60,7 @@ import AST.Declaration as D
 import AST.Module as M
 import AST.Variable as V
 
-import Language.Elm.TH.BaseDecs
+import qualified Language.Elm.TH.BaseDecs as BaseDecs
 import Language.Haskell.TH.Lib
 import qualified Language.Elm.TH.HToE as HToE
 import qualified Language.Elm.TH.Json as Json
@@ -149,8 +149,8 @@ decsFromModuleFile filePath = do
 
 elmModuleToString :: M.SourceModule -> String
 elmModuleToString (M.Module [name] path exports imports elmDecs ) =
-  let allDecs = baseDecs ++ elmDecs 
-      allImports = [] --TODO --imports ++ [("Json", M.As "Json"), ("Dict", M.As "Dict"), ("JsonUtil", M.As "JsonUtil"), ("Error", M.As "Error")]
+  let allDecs = BaseDecs.baseDecs ++ elmDecs 
+      allImports = BaseDecs.baseImports --TODO --imports ++ [("Json", M.As "Json"), ("Dict", M.As "Dict"), ("JsonUtil", M.As "JsonUtil"), ("Error", M.As "Error")]
       newModule = M.Module [name] path exports allImports allDecs
       modString =  Pretty.renderPretty newModule
   in modString              
@@ -168,6 +168,8 @@ translateToElm options filePath = do
   elmString <- toElmString options decs
   liftString elmString
 
+-- | A string containing the JsonUtil module. This can be installed via elm-get, or you can use this string
+jsonUtilModule = BaseDecs.jsonUtilModule
 
 
 -- | ToJSON instance for Data.Map which matches the format used by Elm's JsonUtils    

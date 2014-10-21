@@ -1,44 +1,3 @@
- {-# LANGUAGE TemplateHaskell, QuasiQuotes, OverloadedStrings #-}
-module Language.Elm.TH.BaseDecs where
-
---import AST.Annotation
-import qualified AST.Module as Module
-import qualified Data.Map as Map
-import qualified Parse.Parse as Parse
-import qualified Data.Text as Text
-import qualified Text.PrettyPrint as Pretty
-
-import Text.QuasiText
-
---import Data.FileEmbed
-
-baseDecsElm :: Text.Text
-baseDecsElm = [embed|
-import Json 
-import Dict
-import JsonUtil
-
-
-getCtor = \(Json.Object d) -> case Dict.get "tag" d of
-                           Just (Json.String c) -> c
-varNamed = \(Json.Object d) n -> case Dict.get (show n) d of
-                              Just val -> val
-mapJson = \f (Json.Array l) -> map f l
-makeList = \(Json.Array l) -> l
-error = \s -> case True of False -> s
-    |]
-
-infixes = Map.fromList . map (\(assoc,lvl,op) -> (op,(lvl,assoc))) . concatMap Module.iFixities $ []
---TODO add NthVar to unpack ADTs
-baseDecs = case (Parse.program infixes $ Text.unpack baseDecsElm) of
-    Left doc -> error $ concatMap Pretty.render doc
-    Right modul -> Module.body modul
-
-baseImports = case (Parse.program infixes $ Text.unpack baseDecsElm) of
-    Left doc -> error $ concatMap Pretty.render doc
-    Right modul -> Module.imports modul
-
-jsonUtilModule = [embed|
 module JsonUtils where
 
 {-| General utility functions for working with JSON values.
@@ -208,5 +167,3 @@ Useful for extracting values from Haskell's Aeson instances.
 varNamed : Json.Value -> String -> Json.Value
 varNamed (Json.Object dict) name = case (Dict.get name dict) of
   Just j -> j
-
-    |]

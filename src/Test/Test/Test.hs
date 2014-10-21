@@ -13,6 +13,7 @@ translate Elm from different sources
 import Language.Elm.TH
 import Data.List (intercalate)
 import Control.Monad
+import Language.Elm.TH.BaseDecs
 
 
 -- | Similarly, we can load a module from a file
@@ -24,6 +25,7 @@ elmString = $(translateToElm
 main = do
   putStrLn "Generated elm strings: "
   mapM_ putStrLn [elmString]
-  writeFile "src/TestOutput.elm" elmString
-  --putStrLn elmString
+  --writeFile "src/TestOutput.elm" elmString
+  putStrLn "Imports:"
+  putStrLn $ show $ map fst baseImports
   return ()

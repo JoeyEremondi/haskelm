@@ -119,7 +119,7 @@ instance (Pretty exs, Pretty body) => Pretty (Module exs body) where
       prettyImports = P.vcat $ map prettyMethod ims
 
 prettyMethod :: (String, ImportMethod) -> Doc
-prettyMethod (name, method) =
+prettyMethod (name, method) = P.text "import" <+> P.text name <+>
     case method of
       As alias
           | name == alias -> P.empty
