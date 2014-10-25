@@ -97,3 +97,5 @@ isNull someList = case someList of
 listInsideLists someNestedList = case someNestedList of
   [[1,2,3], [4,5], [6]] -> True
   _ -> False
+  
+testAssoc = 1 + 2 - 3 - 4 + 5 * 6 / 7 / 8 + 9 - 10 + 11

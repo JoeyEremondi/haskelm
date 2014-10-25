@@ -76,6 +76,9 @@ import qualified Language.Haskell.Exts.Syntax as Exts
 import Data.Aeson (ToJSON, FromJSON, parseJSON, toJSON, fromJSON)
 import qualified Data.Map
 
+
+import Text.Regex.Posix
+
 -- | Options for how to generate Elm source code
 data TranslateOptions = Options {
  --
@@ -116,7 +119,7 @@ toElm options decs = do
   return $ M.Module [moduleName options] "" (V.openListing)  (importList ++ openImportList) elmDecs 
 
 --Single stateful computation to store record state information  
-translateDecs decs = do
+translateDecs decs =  do
   HToE.findRecords decs
   mapM HToE.translateDec decs
   
@@ -130,16 +133,24 @@ toElmString options decs = elmModuleToString <$> toElm options decs
 decsFromString :: String -> Q [Dec]
 decsFromString s = case parseDecs s of
     Left e -> error $ "Failed to parse module\n" ++ e
-    Right decs -> return decs
+    Right decs ->  return decs
 
   
 --TODO also generate options?
 decsFromModuleString :: String -> DecsQ
-decsFromModuleString source = case parseHsModule source of
+decsFromModuleString source = decsFromString decString
+  where
+    fileLines = lines source
+    notMatch regex s = not $ s =~ regex
+    notModules = filter (notMatch "^module .* where$") fileLines
+    notImports = filter (notMatch "^import") notModules
+    decString = unlines notImports
+
+{-case parseHsModule source of
     Left e -> error $ "Failed to parse module\n" ++ e
     Right (Exts.Module _ _ _ _ _ _ decs) -> do
       let decString = intercalate "\n" $ map prettyPrint decs
-      decsFromString decString
+      trace ("Decs only string " ++ decString) $ decsFromString decString-}
 
 decsFromModuleFile :: String -> DecsQ
 decsFromModuleFile filePath = do

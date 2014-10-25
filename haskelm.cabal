@@ -62,6 +62,7 @@ Library
                        parsec,
                        QuasiText,
                        indents,
+                       regex-posix,
                        Elm == 0.13
 
 
@@ -108,7 +109,7 @@ Executable haskelm
                        haskell-src-exts,
                        indents,
                        QuasiText,
-                       
+                       regex-posix,
                        Elm == 0.13
 
 Test-Suite test-haskelm

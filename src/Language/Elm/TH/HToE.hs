@@ -19,8 +19,6 @@ import Language.Haskell.TH.Syntax
 
 import Data.Aeson.TH
 
-import Debug.Trace
-
 
 import qualified AST.Module as M
 import qualified AST.Declaration as D
@@ -140,7 +138,7 @@ translateDec:: Dec -> SQ [D.SourceDecl]
 
 --TODO translate where decs into elm let-decs
 --TODO what about when more than one clause?
-translateDec (FunD name [Clause patList body whereDecs])  = do
+translateDec (FunD name [Clause patList body whereDecs])  =  do
     let eName = nameToElmString name
     (ePats, asDecList) <- unzip <$> mapM translatePattern patList
     let asDecs = concat asDecList
@@ -265,12 +263,12 @@ data Associativity = LeftAssoc | RightAssoc | NonAssoc
   deriving (Eq, Show)
 
 linearizeInfixPat :: Pat -> [LinearInfix]
-linearizeInfixPat (UInfixP p1 name p2) = 
-  (linearizeInfixPat p1) ++ [UIOp name] ++ (linearizeInfixPat p2)
+linearizeInfixPat p@(UInfixP p1 name p2) = trace ("Linearize pat")
+    (linearizeInfixPat p1) ++ [UIOp name] ++ (linearizeInfixPat p2)
 linearizeInfixPat p = [UIPat p]
 
 linearizeInfixExp :: Exp -> [LinearInfix]
-linearizeInfixExp (UInfixE e1 (VarE name) e2) = 
+linearizeInfixExp (UInfixE e1 (VarE name) e2) = trace ("Linearize exp") $
   (linearizeInfixExp e1) ++ [UIOp name] ++ (linearizeInfixExp e2)
 linearizeInfixExp e = [UIExp e]
 
@@ -312,48 +310,58 @@ getPrecedence (UIOp op) = case (nameToString op) of
 getPrecedence _ = (-1, NonAssoc)
 
 reassocPat :: [LinearInfix] -> Pat
-reassocPat lin = InfixP leftPat op rightPat
+
+--Base case: only one op
+reassocPat [UIPat p] = p
+
+reassocPat lin = trace ("Reassoc pat") $ InfixP leftPat op rightPat
   where
     precs = map getPrecedence lin
     maxPrec = maximum (fst $ unzip precs)
     --Left most op with highest precedence
     leftMostOp = head $ filter ((== maxPrec) . fst . getPrecedence) lin
-    leftPartition (h@(UIOp name):t) = 
-      let (subLeft, subOp, subRight) = leftPartition t
-      in if (leftMostOp == UIOp name)
-         then ([], name, t)
-         else (h:subLeft, subOp, subRight)
+    leftPartition [p1, UIOp name, p2] =  ([p1], name, [p2])
+    leftPartition (p1: (op@(UIOp name) ) :t) = 
+        if (leftMostOp == UIOp name)
+        then ([p1], name, t)
+        else let 
+            (subLeft, subOp, subRight) = leftPartition t
+          in (p1:op:subLeft, subOp, subRight)
     --Find the op we split on, and look at its associativity
     --Which decides if we split on left or rightmost occurrence of that op
     rightPartition l = let
         (revR, op, revL) = leftPartition $ reverse l
       in (reverse revL, op, reverse revR)
     (leftList, op, rightList) = case (snd $ getPrecedence leftMostOp) of
-      RightAssoc -> rightPartition lin
+      LeftAssoc -> rightPartition lin
       _ -> leftPartition lin
     leftPat = reassocPat leftList
     rightPat = reassocPat rightList
     
       
 reassocExp :: [LinearInfix] -> Exp
-reassocExp lin = InfixE (Just leftExp) (VarE op) (Just rightExp)
+reassocExp [UIExp e] = e
+reassocExp lin = trace ("Reassoc exp") $ InfixE (Just leftExp) (VarE op) (Just rightExp)
   where
     precs = map getPrecedence lin
     maxPrec = maximum (fst $ unzip precs)
     --Left most op with highest precedence
     leftMostOp = head $ filter ((== maxPrec) . fst . getPrecedence) lin
-    leftPartition (h@(UIOp name):t) = 
-      let (subLeft, subOp, subRight) = leftPartition t
-      in if (leftMostOp == UIOp name)
-         then ([], name, t)
-         else (h:subLeft, subOp, subRight)
+    leftPartition [p1, UIOp name, p2] = ([p1], name, [p2])
+    leftPartition (e1: (op@(UIOp name) ) :t) = 
+         if (leftMostOp == UIOp name)
+        then ([e1], name, t)
+        else let 
+            (subLeft, subOp, subRight) = leftPartition t
+          in (e1:op:subLeft, subOp, subRight)
+    --leftPartition x = error $ show x
     --Find the op we split on, and look at its associativity
     --Which decides if we split on left or rightmost occurrence of that op
     rightPartition l = let
         (revR, op, revL) = leftPartition $ reverse l
       in (reverse revL, op, reverse revR)
     (leftList, op, rightList) = case (snd $ getPrecedence leftMostOp) of
-      RightAssoc -> rightPartition lin
+      LeftAssoc -> rightPartition lin --Left associative means start with right-most operator
       _ -> leftPartition lin
     leftExp = reassocExp leftList
     rightExp = reassocExp rightList    
@@ -430,7 +438,7 @@ translatePattern p@(InfixP p1 name p2) = case (nameToString name) of
   ":" -> do
         (ep1, sub1) <- translatePattern p1
         (ep2, sub2) <- translatePattern p2
-        return $ trace (show p)$(P.Data (V.Raw "::") [ep1, ep2], sub1 ++ sub2) --TODO make cons constant somewhere
+        return $ (P.Data (V.Raw "::") [ep1, ep2], sub1 ++ sub2) --TODO make cons constant somewhere
   _ -> translatePattern $ ConP name [p1,p2]
 --treat unboxed infix like infix
 translatePattern p@(UInfixP p1 name p2) = 
@@ -453,7 +461,7 @@ translatePattern (ViewP _ _) = unImplemented "View patterns"
 -- Useful for as patterns, so we can do pattern checking as well as multiple naming
 patToExp :: Pat -> SQ (Pat, Exp)
 patToExp p = do
-  noWild <- removeWildcards [1..]  p
+  noWild <-  removeWildcards [1..]  p
   return (noWild, patToExp' noWild)
   
   where

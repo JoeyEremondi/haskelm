@@ -56,8 +56,7 @@ instance (Show var, Var.ToString var) => Pretty (Pattern var) where
      Alias x p -> prettyParens p <+> PP.text "as" <+> variable x
      Anything -> PP.text "_"
      Data name [hd,tl] | Var.toString name == "::" ->
-          (PP.text "{{{" <+> (PP.text $ show pattern) <+> PP.text "}}}" ) <+>
-             (parensIf isCons $ pretty hd) <+> ((PP.text "::") <+> ( pretty tl))
+          (parensIf isCons $ pretty hd) <+> ((PP.text "::") <+> ( pretty tl))
        where
          isCons = case hd of
                     Data ctor _ -> Var.toString ctor == "::"
