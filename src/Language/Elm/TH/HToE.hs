@@ -268,7 +268,9 @@ linearizeInfixPat p@(UInfixP p1 name p2) = trace ("Linearize pat")
 linearizeInfixPat p = [UIPat p]
 
 linearizeInfixExp :: Exp -> [LinearInfix]
-linearizeInfixExp (UInfixE e1 (VarE name) e2) = trace ("Linearize exp") $
+linearizeInfixExp e@(UInfixE e1 (VarE name) e2) = 
+  (linearizeInfixExp e1) ++ [UIOp name] ++ (linearizeInfixExp e2)
+linearizeInfixExp e@(UInfixE e1 (ConE name) e2) = 
   (linearizeInfixExp e1) ++ [UIOp name] ++ (linearizeInfixExp e2)
 linearizeInfixExp e = [UIExp e]
 
@@ -340,8 +342,8 @@ reassocPat lin = trace ("Reassoc pat") $ InfixP leftPat op rightPat
     
       
 reassocExp :: [LinearInfix] -> Exp
-reassocExp [UIExp e] = e
-reassocExp lin = trace ("Reassoc exp") $ InfixE (Just leftExp) (VarE op) (Just rightExp)
+reassocExp [UIExp e] = trace ("single UIExp " ++ show e) $ e
+reassocExp lin = trace ("Reassoc exp " ++ show leftExp ++ " left " ++ show rightExp) $ InfixE (Just leftExp) (VarE op) (Just rightExp)
   where
     precs = map getPrecedence lin
     maxPrec = maximum (fst $ unzip precs)
@@ -632,7 +634,7 @@ translateExpression (ListE exps) = ( Lo.none . E.ExplicitList ) <$> mapM transla
 
 --Unboxed infix expression
 --Haskell treats list  cons as binop, but Elm treats it as Constructor
-translateExpression (InfixE (Just e1) op (Just e2)) = do
+translateExpression (InfixE (Just e1) op (Just e2)) = trace ("InfixE translate") $ do
     eE1 <- translateExpression e1
     eE2 <- translateExpression e2
     let opString =  expressionToString op
@@ -642,8 +644,11 @@ translateExpression (InfixE (Just e1) op (Just e2)) = do
 
 --Infix where we have all the parts, i.e. not a section
 --Just translate as unboxed
-translateExpression e@(UInfixE e1 op e2) = 
-  translateExpression $ reassocExp $ linearizeInfixExp e
+translateExpression e@(UInfixE e1 op e2) = let
+    lexp = linearizeInfixExp e
+    rexp = reassocExp lexp
+    texp = translateExpression  rexp
+  in trace ("Original" ++ show e ++ "\nLinear " ++ show lexp ++ "\nreassoc " ++ show rexp ++ "\n") $ texp
 
 translateExpression e@(RecConE name nameExpList ) = do
   let (names, expList) = unzip nameExpList
