@@ -79,7 +79,6 @@ import qualified Data.Map
 
 import Text.Regex.Posix
 
-import Debug.Trace (trace)
 
 -- | Options for how to generate Elm source code
 data TranslateOptions = Options {
@@ -123,7 +122,7 @@ toElm options decs = do
 --Single stateful computation to store record state information  
 translateDecs decs =  do
   HToE.findRecords decs
-  mapM (\d -> trace ("Translating dec " ++ show d) $ HToE.translateDec d) decs
+  mapM  HToE.translateDec decs
   
 -- | Given a module name and a list of template-haskell declarations
 -- | translate the declarations into Elm and return the string of the translated module
