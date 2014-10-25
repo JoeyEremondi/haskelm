@@ -36,7 +36,7 @@ allZero _ _ _ = False
 
 --As-patterns
 wrapMaybe [] = Nothing
-maybeZero l@(h:_:_) = Just l
+maybeZero aList@(h:_:_) = Just aList
 
 myRange = [1 .. 10]
 
@@ -83,3 +83,19 @@ compTest = id . add13
 appTest = head $ concat [[1,2,3], [4,5,6]]
 --reverseAppTest = ( concat [[1,2,3], [4,5,6]]) <| first
 
+--Test pattern matching on multiple list aguments
+isTwoElems someList = case someList of
+  [_, _] -> True
+  _ -> False
+  
+theEmptyList = []
+
+isNull someList = case someList of
+  [] -> True
+  _ -> False
+
+listInsideLists someNestedList = case someNestedList of
+  [[1,2,3], [4,5], [6]] -> True
+  _ -> False
+  
+testAssoc = 1 + 2 - 3 - 4 + 5 * 6 / 7 / 8 + 9 - 10 + 11

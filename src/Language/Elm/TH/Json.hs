@@ -59,7 +59,7 @@ nNames n base = do
 
 -- | Variable for the getter function getting the nth variable from a Json
 varNamed :: Exp
-varNamed = VarE (mkName "JsonUtil.varNamed")
+varNamed = VarE (mkName "JsonUtils.varNamed")
   
 -- | Expression getting a named subvariable from a JSON object
 getVarNamed :: String -> Exp
@@ -115,27 +115,27 @@ fromJsonForType :: Type -> SQ Exp
 
 --Type name not covered by Prelude
 fromJsonForType (ConT name) = case (nameToString name) of
-  "Int" -> return $ VarE $ mkName "JsonUtil.intFromJson"
-  "Bool" -> return $ VarE $ mkName "JsonUtil.boolFromJson"
-  "Float" -> return $ VarE $ mkName "JsonUtil.floatFromJson"
-  "Double" -> return $ VarE $ mkName "JsonUtil.floatFromJson"
-  "String" -> return $ VarE $ mkName "JsonUtil.stringFromJson"
+  "Int" -> return $ VarE $ mkName "JsonUtils.intFromJson"
+  "Bool" -> return $ VarE $ mkName "JsonUtils.boolFromJson"
+  "Float" -> return $ VarE $ mkName "JsonUtils.floatFromJson"
+  "Double" -> return $ VarE $ mkName "JsonUtils.floatFromJson"
+  "String" -> return $ VarE $ mkName "JsonUtils.stringFromJson"
   _ -> return $ VarE $ fromJsonName name
 
 fromJsonForType (AppT ListT t) = do
   subExp <- fromJsonForType t
-  return $ AppE (VarE $ mkName "JsonUtil.listFromJson") subExp  
+  return $ AppE (VarE $ mkName "JsonUtils.listFromJson") subExp  
   
 fromJsonForType (AppT (ConT name) t) = do
   subExp <- fromJsonForType t
   case (nameToString name) of
-    "Maybe" -> return $ AppE (VarE $ mkName "JsonUtil.maybeFromJson") subExp
+    "Maybe" -> return $ AppE (VarE $ mkName "JsonUtils.maybeFromJson") subExp
     
 fromJsonForType (AppT (AppT (ConT name) t1) t2) = do
   sub1 <- fromJsonForType t1
   sub2 <- fromJsonForType t2
   case (nameToString name) of
-    "Data.Map.Map" -> return $ applyArgs (VarE $ mkName "JsonUtil.dictFromJson") [sub1, sub2]
+    "Data.Map.Map" -> return $ applyArgs (VarE $ mkName "JsonUtils.dictFromJson") [sub1, sub2]
     s -> error  $ "Unsupported json type " ++ s
     
 fromJsonForType t
@@ -168,7 +168,7 @@ fromJsonForDec dec@(DataD _ name _ [ctor] _deriving) = do
   
 
 fromJsonForDec dec@(DataD _ name _ ctors _deriving) = do
-  let argTagExpression = AppE (VarE $ mkName "JsonUtil.getTag") jsonArgExp
+  let argTagExpression = AppE (VarE $ mkName "JsonUtils.getTag") jsonArgExp
   let numCtors = length ctors
   ctorMatches <- mapM (fromMatchForCtor numCtors) ctors
   let fnExp = CaseE argTagExpression ctorMatches
@@ -241,7 +241,7 @@ getSubJsonRecord (field, t) = do
   return (subName, ValD subLeftHand subRightHand [])
     
 unpackContents :: Int -> Exp -> SQ Exp
-unpackContents numCtors jsonValue = return $ applyArgs (VarE $ mkName "JsonUtil.unpackContents") [LitE $ IntegerL $ toInteger numCtors, jsonValue]
+unpackContents numCtors jsonValue = return $ applyArgs (VarE $ mkName "JsonUtils.unpackContents") [LitE $ IntegerL $ toInteger numCtors, jsonValue]
 
 
   
@@ -256,29 +256,29 @@ makeToJson allDecs = do
 
 toJsonForType :: Type -> SQ Exp
 toJsonForType (ConT name) = case (nameToString name) of
-  "Int" -> return $ VarE $ mkName "JsonUtil.intToJson"
-  "Bool" -> return $ VarE $ mkName "JsonUtil.boolToJson"
-  "Float" -> return $ VarE $ mkName "JsonUtil.floatToJson"
-  "Double" -> return $ VarE $ mkName "JsonUtil.floatToJson"
-  "String" -> return $ VarE $ mkName "JsonUtil.stringToJson"
+  "Int" -> return $ VarE $ mkName "JsonUtils.intToJson"
+  "Bool" -> return $ VarE $ mkName "JsonUtils.boolToJson"
+  "Float" -> return $ VarE $ mkName "JsonUtils.floatToJson"
+  "Double" -> return $ VarE $ mkName "JsonUtils.floatToJson"
+  "String" -> return $ VarE $ mkName "JsonUtils.stringToJson"
   _ -> return $ VarE $ toJsonName name
   
 toJsonForType (AppT (AppT (ConT name) t1) t2) = do
   sub1 <- toJsonForType t1
   sub2 <- toJsonForType t2
   case (nameToString name) of
-    "Data.Map.Map" -> return $ applyArgs (VarE $ mkName "JsonUtil.dictToJson") [sub1, sub2]
+    "Data.Map.Map" -> return $ applyArgs (VarE $ mkName "JsonUtils.dictToJson") [sub1, sub2]
     s -> error  $ "Unsupported json type " ++ s
     
   
 toJsonForType (AppT ListT t) = do
   subExp <- toJsonForType t
-  return $ AppE (VarE $ mkName "JsonUtil.listToJson") subExp  
+  return $ AppE (VarE $ mkName "JsonUtils.listToJson") subExp  
   
 toJsonForType (AppT (ConT name) t) = do
   subExp <- toJsonForType t
   case (nameToString name) of
-    "Maybe" -> return $ AppE (VarE $ mkName "JsonUtil.maybeToJson") subExp
+    "Maybe" -> return $ AppE (VarE $ mkName "JsonUtils.maybeToJson") subExp
 
 toJsonForType t 
   | isTupleType t = do
@@ -384,6 +384,6 @@ makeSubJsonRecord (t, adtName, jsonName) = do
   
 packContents :: Int -> Name -> Exp -> SQ Exp
 packContents numCtors name contentList = do
-  return $ applyArgs (VarE $ mkName "JsonUtil.packContents") [LitE $ IntegerL $ toInteger numCtors, LitE $ StringL $ nameToString name, contentList]
+  return $ applyArgs (VarE $ mkName "JsonUtils.packContents") [LitE $ IntegerL $ toInteger numCtors, LitE $ StringL $ nameToString name, contentList]
   
   

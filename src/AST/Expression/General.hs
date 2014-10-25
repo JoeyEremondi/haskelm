@@ -86,7 +86,7 @@ dummyLet :: (Pretty def) => [def] -> Expr Annotation.Region def Var.Canonical
 dummyLet defs = 
      Annotation.none $ Let defs (Annotation.none $ Var (Var.builtin saveEnvName))
 
-instance (Pretty def, Pretty var, Var.ToString var) => Pretty (Expr' ann def var) where
+instance (Pretty def, Pretty var, Var.ToString var, Show var) => Pretty (Expr' ann def var) where
   pretty expr =
    case expr of
      Literal lit -> pretty lit
@@ -126,8 +126,8 @@ instance (Pretty def, Pretty var, Var.ToString var) => Pretty (Expr' ann def var
      Case e pats ->
          P.hang pexpr 2 (P.vcat (map pretty' pats))
          where
-           pexpr = P.sep [ P.text "case" <+> pretty e, P.text "of" ]
-           pretty' (p,b) = pretty p <+> P.text "->" <+> pretty b
+           pexpr = P.sep [ P.text "case" <+> (parens $ pretty e), P.text "of" ]
+           pretty' (p,b) = Pattern.parensTopPattern p <+> P.text "->" <+> pretty b
 
      Data "::" [hd,tl] -> pretty hd <+> P.text "::" <+> pretty tl
      Data "[]" [] -> P.text "[]"
@@ -181,7 +181,7 @@ collectLambdas lexpr@(Annotation.A _ expr) =
 
     _ -> ([], lexpr)
 
-prettyParens :: (Pretty def, Pretty var, Var.ToString var) => Expr ann def var -> Doc
+prettyParens :: (Pretty def, Pretty var, Var.ToString var, Show var) => Expr ann def var -> Doc
 prettyParens (Annotation.A _ expr) = parensIf needed (pretty expr)
   where
     needed =
