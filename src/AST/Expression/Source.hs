@@ -29,4 +29,4 @@ instance Pretty Def where
      TypeAnnotation name tipe ->
          variable name <+> P.colon <+> pretty tipe
      Definition pattern expr ->
-         pretty pattern <+> P.equals <+> pretty expr
+         (Pattern.parensTopPattern pattern) <+> P.equals <+> pretty expr

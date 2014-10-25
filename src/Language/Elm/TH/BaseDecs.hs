@@ -16,7 +16,7 @@ baseDecsElm :: Text.Text
 baseDecsElm = [embed|
 import Json 
 import Dict
-import JsonUtil
+import JsonUtils
 
 
 getCtor = \(Json.Object d) -> case Dict.get "tag" d of

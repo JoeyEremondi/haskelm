@@ -58,7 +58,11 @@ Library
                        --Elm,
                        --elm-build-lib,
                        binary,
-                       haskell-src-exts
+                       haskell-src-exts,
+                       parsec,
+                       QuasiText,
+                       indents,
+                       Elm == 0.13
 
 
 Executable haskelm
@@ -101,7 +105,11 @@ Executable haskelm
                        --Elm,
                        --elm-build-lib,
                        binary,
-                       haskell-src-exts
+                       haskell-src-exts,
+                       indents,
+                       QuasiText,
+                       
+                       Elm == 0.13
 
 Test-Suite test-haskelm
   Type:            exitcode-stdio-1.0
@@ -127,5 +135,8 @@ Test-Suite test-haskelm
                        --Elm,
                        --elm-build-lib,
                        binary,
-                       haskell-src-exts
+                       haskell-src-exts,
+                       indents,
+                       QuasiText,
+                       Elm == 0.13
   ghc-options:         -ddump-splices

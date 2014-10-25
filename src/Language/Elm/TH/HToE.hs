@@ -19,6 +19,8 @@ import Language.Haskell.TH.Syntax
 
 import Data.Aeson.TH
 
+import Debug.Trace
+
 
 import qualified AST.Module as M
 import qualified AST.Declaration as D
@@ -251,6 +253,112 @@ translateDef d = unImplemented "Non-simple function/value definitions"
 unFst x = (x, [])
 
 --------------------------------------------------------------------------
+--Helper for dealing with infix patterns
+
+--TODO better solution for list of names and ops?
+data LinearInfix = UIPat Pat
+                  | UIExp Exp
+                  | UIOp Name
+  deriving (Eq, Show)
+                  
+data Associativity = LeftAssoc | RightAssoc | NonAssoc
+  deriving (Eq, Show)
+
+linearizeInfixPat :: Pat -> [LinearInfix]
+linearizeInfixPat (UInfixP p1 name p2) = 
+  (linearizeInfixPat p1) ++ [UIOp name] ++ (linearizeInfixPat p2)
+linearizeInfixPat p = [UIPat p]
+
+linearizeInfixExp :: Exp -> [LinearInfix]
+linearizeInfixExp (UInfixE e1 (VarE name) e2) = 
+  (linearizeInfixExp e1) ++ [UIOp name] ++ (linearizeInfixExp e2)
+linearizeInfixExp e = [UIExp e]
+
+getPrecedence :: LinearInfix -> (Int, Associativity)
+getPrecedence (UIOp op) = case (nameToString op) of
+  "!!" -> (9, LeftAssoc)
+  "." -> (9, RightAssoc)
+  "^" -> (8, RightAssoc)
+  "^^" -> (8, RightAssoc)
+  "**" -> (8, RightAssoc)
+  "*" -> (7, LeftAssoc)
+  "/" -> (7, LeftAssoc) 
+  "`div`" -> (7, LeftAssoc)
+  "`mod`" -> (7, LeftAssoc)
+  "`rem`" -> (7, LeftAssoc)
+  "`quot`" -> (7, LeftAssoc)
+  "+" -> (6, LeftAssoc)
+  "-" -> (6, LeftAssoc)
+  ":" -> (5, RightAssoc)
+  "++" -> (5, RightAssoc)
+  "==" -> (4, NonAssoc)
+  "/=" -> (4, NonAssoc)
+  "<" -> (4, NonAssoc)
+  "<=" -> (4, NonAssoc)
+  ">" -> (4, NonAssoc)
+  ">=" -> (4, NonAssoc)
+  "`elem`" -> (4, NonAssoc)
+  "`notElem`" -> (4, NonAssoc)
+  "&&" -> (3, RightAssoc)
+  "||" -> (2, RightAssoc)
+  ">>" -> (1, LeftAssoc)
+  ">>=" -> (1, LeftAssoc)
+  "$" -> (0, RightAssoc)
+  "$!" -> (0, RightAssoc)
+  "`seq`" -> (0, RightAssoc)
+  
+ 
+--If not an infix operator, has precedence -1, so we never split our list on a non-operator
+getPrecedence _ = (-1, NonAssoc)
+
+reassocPat :: [LinearInfix] -> Pat
+reassocPat lin = InfixP leftPat op rightPat
+  where
+    precs = map getPrecedence lin
+    maxPrec = maximum (fst $ unzip precs)
+    --Left most op with highest precedence
+    leftMostOp = head $ filter ((== maxPrec) . fst . getPrecedence) lin
+    leftPartition (h@(UIOp name):t) = 
+      let (subLeft, subOp, subRight) = leftPartition t
+      in if (leftMostOp == UIOp name)
+         then ([], name, t)
+         else (h:subLeft, subOp, subRight)
+    --Find the op we split on, and look at its associativity
+    --Which decides if we split on left or rightmost occurrence of that op
+    rightPartition l = let
+        (revR, op, revL) = leftPartition $ reverse l
+      in (reverse revL, op, reverse revR)
+    (leftList, op, rightList) = case (snd $ getPrecedence leftMostOp) of
+      RightAssoc -> rightPartition lin
+      _ -> leftPartition lin
+    leftPat = reassocPat leftList
+    rightPat = reassocPat rightList
+    
+      
+reassocExp :: [LinearInfix] -> Exp
+reassocExp lin = InfixE (Just leftExp) (VarE op) (Just rightExp)
+  where
+    precs = map getPrecedence lin
+    maxPrec = maximum (fst $ unzip precs)
+    --Left most op with highest precedence
+    leftMostOp = head $ filter ((== maxPrec) . fst . getPrecedence) lin
+    leftPartition (h@(UIOp name):t) = 
+      let (subLeft, subOp, subRight) = leftPartition t
+      in if (leftMostOp == UIOp name)
+         then ([], name, t)
+         else (h:subLeft, subOp, subRight)
+    --Find the op we split on, and look at its associativity
+    --Which decides if we split on left or rightmost occurrence of that op
+    rightPartition l = let
+        (revR, op, revL) = leftPartition $ reverse l
+      in (reverse revL, op, reverse revR)
+    (leftList, op, rightList) = case (snd $ getPrecedence leftMostOp) of
+      RightAssoc -> rightPartition lin
+      _ -> leftPartition lin
+    leftExp = reassocExp leftList
+    rightExp = reassocExp rightList    
+    
+
 -- |Translate a pattern match from Haskell to Elm
 
 translatePattern :: Pat -> SQ (P.RawPattern, [S.Def])
@@ -293,6 +401,7 @@ translatePattern (ConP name patList) = do
        let decs = map makeDef $ zip patList varNames
        return (P.Data (V.Raw str) $ [P.Record varNames], decs ++ (concat allAsDecs))
        
+       
      else do
       return (P.Data (V.Raw $ nameToElmString name) patList, concat allAsDecs) 
   where 
@@ -317,9 +426,15 @@ translatePattern (ListP patList) = do
 
 --Convert infix patterns to Data patterns, then let Elm decide
 -- how it translates them (i.e. cons is a special case)                                                     
-translatePattern (InfixP p1 name p2) = translatePattern $ ConP name [p1,p2]
+translatePattern p@(InfixP p1 name p2) = case (nameToString name) of
+  ":" -> do
+        (ep1, sub1) <- translatePattern p1
+        (ep2, sub2) <- translatePattern p2
+        return $ trace (show p)$(P.Data (V.Raw "::") [ep1, ep2], sub1 ++ sub2) --TODO make cons constant somewhere
+  _ -> translatePattern $ ConP name [p1,p2]
 --treat unboxed infix like infix
-translatePattern (UInfixP p1 name p2) = translatePattern $ InfixP p1 name p2
+translatePattern p@(UInfixP p1 name p2) = 
+  translatePattern $ reassocPat $ linearizeInfixPat p
 
 --TODO implement records
 translatePattern (RecP _ _) = unImplemented "Record patterns"
@@ -508,16 +623,19 @@ translateExpression (CaseE exp matchList) = do
 translateExpression (ListE exps) = ( Lo.none . E.ExplicitList ) <$> mapM translateExpression exps
 
 --Unboxed infix expression
-translateExpression (UInfixE e1 op e2) = do
+--Haskell treats list  cons as binop, but Elm treats it as Constructor
+translateExpression (InfixE (Just e1) op (Just e2)) = do
     eE1 <- translateExpression e1
     eE2 <- translateExpression e2
-    let eOp =  V.Raw $ expressionToString op
-    return $ Lo.none $ E.Binop eOp eE1 eE2
+    let opString =  expressionToString op
+    case opString of
+      "::" -> return $ Lo.none $ E.Data ( opString) [eE1, eE2]
+      _ -> return $ Lo.none $ E.Binop (V.Raw opString) eE1 eE2
 
 --Infix where we have all the parts, i.e. not a section
 --Just translate as unboxed
-translateExpression (InfixE (Just e1) op (Just e2)) = 
-  translateExpression $ UInfixE e1 op e2
+translateExpression e@(UInfixE e1 op e2) = 
+  translateExpression $ reassocExp $ linearizeInfixExp e
 
 translateExpression e@(RecConE name nameExpList ) = do
   let (names, expList) = unzip nameExpList
