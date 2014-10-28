@@ -62,8 +62,8 @@ Library
                        parsec,
                        QuasiText,
                        indents,
-                       regex-posix,
-                       Elm == 0.13
+                       regex-posix
+                       --Elm == 0.13
 
 
 Executable haskelm
@@ -109,8 +109,8 @@ Executable haskelm
                        haskell-src-exts,
                        indents,
                        QuasiText,
-                       regex-posix,
-                       Elm == 0.13
+                       regex-posix
+                       --Elm == 0.13
 
 Test-Suite test-haskelm
   Type:            exitcode-stdio-1.0
@@ -138,6 +138,6 @@ Test-Suite test-haskelm
                        binary,
                        haskell-src-exts,
                        indents,
-                       QuasiText,
-                       Elm == 0.13
+                       QuasiText
+                       --Elm == 0.13
   ghc-options:         -ddump-splices
