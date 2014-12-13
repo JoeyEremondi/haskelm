@@ -1,22 +1,18 @@
-{-# OPTIONS_GHC -W #-}
-module Parse.Parse (program, dependencies) where
+module Parse.Parse (program) where
 
-import Control.Applicative ((<$>), (<*>))
+import Control.Applicative ((<$>))
 import qualified Data.List as List
 import qualified Data.Map as Map
-import Text.Parsec hiding (newline,spaces)
+import Text.Parsec hiding (newline, spaces)
 import qualified Text.PrettyPrint as P
 
 import qualified AST.Declaration as D
 import qualified AST.Module as M
-import qualified AST.Variable as Var
 import Parse.Helpers
 import Parse.Declaration (infixDecl)
-import Parse.Module
+import qualified Parse.Module as Module
 import qualified Parse.Declaration as Decl
 --import Transform.Declaration (combineAnnotations)
-
-
 
 freshDef = commitIf (freshLine >> (letter <|> char '_')) $ do
              freshLine
@@ -33,22 +29,10 @@ program table src =
 
 programParser :: IParser M.SourceModule
 programParser =
-    do optional freshLine
-       (names,exports) <-
-           option (["Main"], Var.openListing) (moduleDef `followedBy` freshLine)
-       is <- (do try (lookAhead $ reserved "import")
-                 imports `followedBy` freshLine) <|> return []
-       declarations <- decls
-       optional freshLine ; optional spaces ; eof
-       return $ M.Module names "" exports is declarations
-
-dependencies :: String -> Either [P.Doc] (String, [String])
-dependencies =
-    let getName = List.intercalate "." . fst in
-    setupParser $ do
-      optional freshLine
-      (,) <$> option "Main" (getName <$> moduleDef `followedBy` freshLine)
-          <*> option [] (map fst <$> imports `followedBy` freshLine)
+  do (M.HeaderAndImports names exports imports) <- Module.headerAndImports
+     declarations <- decls
+     optional freshLine ; optional spaces ; eof
+     return $ M.Module names "" exports imports declarations
 
 setupParserWithTable :: OpTable -> IParser a -> String -> Either [P.Doc] a
 setupParserWithTable table p source =

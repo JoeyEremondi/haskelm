@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -W #-}
 module AST.Type where
 
 import Control.Applicative ((<$>), (<*>))
@@ -30,7 +29,7 @@ recordOf :: [(String, Type var)] -> Type var
 recordOf fields = Record fields Nothing
 
 listOf :: RawType -> RawType
-listOf t = App (Type (Var.Raw "_List")) [t]
+listOf t = App (Type (Var.Raw "List")) [t]
 
 tupleOf :: [RawType] -> RawType
 tupleOf ts = App (Type t) ts
@@ -55,9 +54,6 @@ instance (Var.ToString var, Pretty var) => Pretty (Type var) where
 
       App f args ->
           case (f,args) of
-            (Type name, [t])
-                | Var.toString name == "_List" -> P.brackets (pretty t)
-
             (Type name, _)
                 | Help.isTuple (Var.toString name) ->
                     P.parens . P.sep . P.punctuate P.comma $ map pretty args
@@ -65,19 +61,34 @@ instance (Var.ToString var, Pretty var) => Pretty (Type var) where
             _ -> P.hang (pretty f) 2 (P.sep $ map prettyParens args)
 
       Record _ _ ->
-          P.braces $ case flattenRecord tipe of
-                       (fields, Nothing) -> prettyFields fields
-                       (fields, Just x) ->
-                           P.hang (P.text x <+> P.text "|") 4 (prettyFields fields)
+          case flattenRecord tipe of
+            ([], Nothing) ->
+                P.text "{}"
+
+            (fields, Nothing) ->
+                P.sep
+                  [ P.cat (zipWith (<+>) (P.lbrace : repeat P.comma) (map prettyField fields))
+                  , P.rbrace
+                  ]
+
+            (fields, Just x) ->
+                P.hang
+                    (P.lbrace <+> P.text x <+> P.text "|")
+                    4
+                    (P.sep
+                      [ P.cat (zipWith (<+>) (P.space : repeat P.comma) (map prettyField fields))
+                      , P.rbrace
+                      ])
           where
-            prettyField (f,t) = P.text f <+> P.text ":" <+> pretty t
-            prettyFields fields = commaSep (map prettyField fields)
+            prettyField (field, tipe) =
+                P.text field <+> P.text ":" <+> pretty tipe
 
       Aliased name t ->
           let t' = pretty t in
           if show t' `elem` ["Int", "Float", "String", "Char", "Bool"]
             then t'
             else pretty name
+
 
 collectLambdas :: Type var -> [Type var]
 collectLambdas tipe =
@@ -94,7 +105,6 @@ prettyParens tipe = parensIf (needed tipe) (pretty tipe)
 
         Lambda _ _ -> True
 
-        App (Type name) [_] | Var.toString name == "_List"     -> False
         App (Type name) _   | Help.isTuple (Var.toString name) -> False
         App t' [] -> needed t'
         App _ _ -> True

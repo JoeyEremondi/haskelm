@@ -47,7 +47,7 @@ boundVars pattern =
       Literal _ -> Set.empty
 
 
-instance (Show var, Var.ToString var) => Pretty (Pattern var) where
+instance Var.ToString var => Pretty (Pattern var) where
   pretty pattern =
    case pattern of
      Var x -> variable x
@@ -56,7 +56,7 @@ instance (Show var, Var.ToString var) => Pretty (Pattern var) where
      Alias x p -> prettyParens p <+> PP.text "as" <+> variable x
      Anything -> PP.text "_"
      Data name [hd,tl] | Var.toString name == "::" ->
-          (parensIf isCons $ pretty hd) <+> ((PP.text "::") <+> ( pretty tl))
+         parensIf isCons (pretty hd) <+> PP.text "::" <+> pretty tl
        where
          isCons = case hd of
                     Data ctor _ -> Var.toString ctor == "::"
@@ -68,14 +68,7 @@ instance (Show var, Var.ToString var) => Pretty (Pattern var) where
          where
            name' = Var.toString name
 
-parensTopPattern :: (Show var, Var.ToString var) => Pattern var -> Doc
-parensTopPattern pattern = 
-  case pattern of
-    Data _ _ -> parens $ pretty pattern
-    _ -> pretty pattern
-    
-           
-prettyParens :: (Show var, Var.ToString var) => Pattern var -> Doc
+prettyParens :: Var.ToString var => Pattern var -> Doc
 prettyParens pattern = 
     parensIf needsThem (pretty pattern)
   where

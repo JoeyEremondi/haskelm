@@ -9,21 +9,7 @@ environment: ghc-7.8-stable-14.09
 auto-hidden: []
 cabal-file: project.cabal
 version: 1
-extra-packages: ! 'Hackage: QuasiText 0.1.2.5
-
-  Hackage: prettyclass 1.0.0.0
-
-  Hackage: language-glsl 0.1.1
-
-  Hackage: union-find 0.2
-
-  Hackage: highlighting-kate 0.5.9
-
-  Hackage: aeson-pretty 0.7.1
-
-  Hackage: cheapskate 0.1.0.1
-
-  Git: https://github.com/elm-lang/Elm.git 4e1cde74a4'
+extra-packages: ! 'Hackage: QuasiText 0.1.2.5'
 ghc-args:
 - -ddump-splices
 excluded-modules:

@@ -46,6 +46,7 @@
 module Language.Elm.TH
     ( 
     translateToElm,
+    jsonUtilModule,
     TranslateOptions (..),
     ToJSON (..),
     FromJSON (..),
@@ -117,7 +118,9 @@ toElm options decs = do
   elmDecs <- evalStateT  (concat <$> translateDecs (decs ++ jsonDecs)  ) Util.defaultState
   let importList = map (\im->(im, M.importing [])) $ qualifiedImports options
   let openImportList = map (\im->(im, M.open )) $ openImports options
-  return $ M.Module [moduleName options] "" (V.openListing)  (importList ++ openImportList) elmDecs 
+  --TODO fix
+  return $ M.Module [moduleName options] "" (V.openListing)  [] elmDecs 
+  --return $ M.Module [moduleName options] "" (V.openListing)  (importList ++ openImportList) elmDecs 
 
 --Single stateful computation to store record state information  
 translateDecs decs =  do

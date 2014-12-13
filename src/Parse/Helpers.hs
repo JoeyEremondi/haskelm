@@ -22,17 +22,15 @@ import AST.Literal as Literal
 import AST.PrettyPrint
 import qualified AST.Variable as Variable
 
-reserveds :: [String]
-reserveds =
-    [ "if", "then", "else"
-    , "case", "of"
-    , "let", "in"
-    , "data", "type"
-    , "module", "where"
-    , "import", "as", "hiding", "open"
-    , "export", "foreign"
-    , "deriving", "port"
-    ]
+reserveds = [ "if", "then", "else"
+            , "case", "of"
+            , "let", "in"
+            , "data", "type"
+            , "module", "where"
+            , "import", "as", "hiding", "open"
+            , "export", "foreign"
+            , "deriving", "port"
+            ]
 
 expecting = flip (<?>)
 
@@ -325,7 +323,35 @@ shader =
       ]
 
 glSource :: String -> Either ParseError Literal.GLShaderTipe
-glSource = error "GLSL not supported in Haskelm"
+glSource src = error "No GL in Haskelm"
+{-
+glSource src =
+  case GLP.parse src of
+    Right (TranslationUnit decls) ->
+      Right . foldr addGLinput emptyDecls . join . map extractGLinputs $ decls
+    Left e -> Left e
+  where 
+    emptyDecls = Literal.GLShaderTipe Map.empty Map.empty Map.empty
+    addGLinput (qual,tipe,name) glDecls = case qual of
+        Attribute -> glDecls { attribute = Map.insert name tipe $ attribute glDecls }
+        Uniform -> glDecls { uniform = Map.insert name tipe $ uniform glDecls }
+        Varying -> glDecls { varying = Map.insert name tipe $ varying glDecls }
+        _ -> error "Should never happen due to below filter"
+    extractGLinputs decl = case decl of
+        Declaration (InitDeclaration (TypeDeclarator (FullType (Just (TypeQualSto qual)) (TypeSpec _prec (TypeSpecNoPrecision tipe _mexpr1)))) [InitDecl name _mexpr2 _mexpr3]) ->
+            if elem qual [Attribute, Varying, Uniform] 
+            then case tipe of 
+                GLS.Int -> return (qual,Literal.Int,name)
+                GLS.Float -> return (qual,Literal.Float,name)
+                GLS.Vec2 -> return (qual,V2,name)
+                GLS.Vec3 -> return (qual,V3,name) 
+                GLS.Vec4 -> return (qual,V4,name)
+                GLS.Mat4 -> return (qual,M4,name)
+                GLS.Sampler2D -> return (qual,Texture,name)
+                _ -> []
+            else []
+        _ -> []
+-}
 
 --str :: IParser String
 str = expecting "String" $ do

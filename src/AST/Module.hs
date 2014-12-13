@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -W #-}
 module AST.Module where
 
 import Data.Binary
@@ -10,23 +9,42 @@ import qualified AST.Expression.Canonical as Canonical
 import qualified AST.Declaration as Decl
 import qualified AST.Type as Type
 import qualified AST.Variable as Var
-
 import AST.PrettyPrint
+--import qualified Elm.Compiler.Version as Compiler
 import Text.PrettyPrint as P
 
---import qualified Elm.Internal.Version as Version
 
-data Module exs body = Module
-    { names   :: [String]
+-- HELPFUL TYPE ALIASES
+
+type Interfaces = Map.Map Name Interface
+
+type Types   = Map.Map String Type.CanonicalType
+type Aliases = Map.Map String ([String], Type.CanonicalType)
+type ADTs    = Map.Map String (AdtInfo String)
+
+type AdtInfo v = ( [String], [(v, [Type.CanonicalType])] )
+type CanonicalAdt = (Var.Canonical, AdtInfo Var.Canonical)
+
+
+-- MODULES
+
+type SourceModule =
+    Module (Var.Listing Var.Value) [Decl.SourceDecl]
+
+type ValidModule =
+    Module (Var.Listing Var.Value) [Decl.ValidDecl]
+
+type CanonicalModule =
+    Module [Var.Value] CanonicalBody
+
+
+data Module exports body = Module
+    { names   :: Name
     , path    :: FilePath
-    , exports :: exs
-    , imports :: [(String, ImportMethod)]
+    , exports :: exports
+    , imports :: [(Name, ImportMethod)]
     , body    :: body
     }
-
-getName :: Module exs body -> String
-getName modul =
-    List.intercalate "." (names modul)
 
 data CanonicalBody = CanonicalBody
     { program   :: Canonical.Expr
@@ -37,24 +55,37 @@ data CanonicalBody = CanonicalBody
     , ports     :: [String]
     }
 
-type SourceModule    = Module (Var.Listing Var.Value) [Decl.SourceDecl]
-type ValidModule     = Module (Var.Listing Var.Value) [Decl.ValidDecl]
-type CanonicalModule = Module [Var.Value] CanonicalBody
 
-type Interfaces = Map.Map String Interface
+-- HEADERS
 
-type Types   = Map.Map String Type.CanonicalType
-type Aliases = Map.Map String ( [String], Type.CanonicalType )
-type ADTs    = Map.Map String (AdtInfo String)
+{-| Basic info needed to identify modules and determine dependencies. -}
+data HeaderAndImports = HeaderAndImports
+    { _names :: Name
+    , _exports :: Var.Listing Var.Value
+    , _imports :: [(Name, ImportMethod)]
+    }
 
-type AdtInfo v = ( [String], [(v, [Type.CanonicalType])] )
-type CanonicalAdt = (Var.Canonical, AdtInfo Var.Canonical)
+type Name = [String] -- must be non-empty
 
+nameToString :: Name -> String
+nameToString = List.intercalate "."
+
+nameIsNative :: Name -> Bool
+nameIsNative name =
+  case name of
+    "Native" : _ -> True
+    _ -> False
+
+
+
+-- INTERFACES
+
+{-| Key facts about a module, used when reading info from .elmi files. -}
 data Interface = Interface
-    { iVersion  :: Int
+    { iVersion  :: String
     , iExports  :: [Var.Value]
     , iTypes    :: Types
-    , iImports  :: [(String, ImportMethod)]
+    , iImports  :: [(Name, ImportMethod)]
     , iAdts     :: ADTs
     , iAliases  :: Aliases
     , iFixities :: [(Decl.Assoc, Int, String)]
@@ -65,7 +96,7 @@ toInterface :: CanonicalModule -> Interface
 toInterface modul =
     let body' = body modul in
     Interface
-    { iVersion  = 0 --Version.elmVersion
+    { iVersion  = "Haskelm"--Compiler.version
     , iExports  = exports modul
     , iTypes    = types body'
     , iImports  = imports modul
@@ -86,6 +117,9 @@ instance Binary Interface where
       put (iAliases modul)
       put (iFixities modul)
       put (iPorts modul)
+
+
+-- IMPORT METHOD
 
 data ImportMethod
     = As !String
@@ -109,6 +143,9 @@ instance Binary ImportMethod where
                1 -> Open <$> get
                _ -> error "Error reading valid ImportMethod type from serialized string"
 
+
+-- PRETTY PRINTING
+
 instance (Pretty exs, Pretty body) => Pretty (Module exs body) where
   pretty (Module names _ exs ims body) =
       P.vcat [modul, P.text "", prettyImports, P.text "", pretty body]
@@ -116,13 +153,16 @@ instance (Pretty exs, Pretty body) => Pretty (Module exs body) where
       modul = P.text "module" <+> name <+> pretty exs <+> P.text "where"
       name = P.text (List.intercalate "." names)
 
-      prettyImports = P.vcat $ map prettyMethod ims
+      prettyImports =
+          P.vcat $ map prettyMethod ims
 
-prettyMethod :: (String, ImportMethod) -> Doc
-prettyMethod (name, method) = P.text "import" <+> P.text name <+>
-    case method of
-      As alias
+
+prettyMethod :: (Name, ImportMethod) -> Doc
+prettyMethod import' =
+    case import' of
+      ([name], As alias)
           | name == alias -> P.empty
-          | otherwise     -> P.text "as" <+> P.text alias
 
-      Open listing -> pretty listing
+      (_, As alias) -> P.text "as" <+> P.text alias
+
+      (_, Open listing) -> pretty listing
