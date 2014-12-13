@@ -88,9 +88,9 @@ data TranslateOptions = Options {
  -- ^ When true, generates `toJson` and `fromJson` for translated type declarations.
  -- The format used by the Json is the same as the one used by Data.Aeson.TH.
  -- This is handy for passing data between a Haskell server and an Elm client.
- qualifiedImports :: [String],
+ qualifiedImports :: [[String]],
  -- ^ Each module name given will be imported in Elm by `import Module`
- openImports :: [String],
+ openImports :: [[String]],
  -- ^ Each module name given will be imported in Elm by `import Module (..)`
  moduleName :: String
  -- ^ The name of the elm module generated. i.e. prepends `module ModuleName` to the generated Elm source.
@@ -118,9 +118,7 @@ toElm options decs = do
   elmDecs <- evalStateT  (concat <$> translateDecs (decs ++ jsonDecs)  ) Util.defaultState
   let importList = map (\im->(im, M.importing [])) $ qualifiedImports options
   let openImportList = map (\im->(im, M.open )) $ openImports options
-  --TODO fix
-  return $ M.Module [moduleName options] "" (V.openListing)  [] elmDecs 
-  --return $ M.Module [moduleName options] "" (V.openListing)  (importList ++ openImportList) elmDecs 
+  return $ M.Module [moduleName options] "" (V.openListing)  (importList ++ openImportList) elmDecs 
 
 --Single stateful computation to store record state information  
 translateDecs decs =  do

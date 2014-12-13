@@ -323,7 +323,7 @@ shader =
       ]
 
 glSource :: String -> Either ParseError Literal.GLShaderTipe
-glSource src = error "No GL in Haskelm"
+glSource _src = error "No GL in Haskelm"
 {-
 glSource src =
   case GLP.parse src of
