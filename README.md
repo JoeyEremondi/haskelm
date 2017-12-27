@@ -47,7 +47,7 @@ There are 5 ways you can get Haskell declarations
 4. From a string which contains a Haskell module (`module` and `import` statements are discarded but allowed)
 5. From a file containing a module as in (4)
 
-It's reccomended that you use (5) for files which are already in your
+It's recommended that you use (5) for files which are already in your
 Haskell project, and that whenever you use (4) or (5), you do NOT
 splice the Haskell declarations into your code (see below).
 The imports are ignored, so this is ideal for simply reading in a Haskell
